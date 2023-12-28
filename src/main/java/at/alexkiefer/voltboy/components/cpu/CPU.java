@@ -8,6 +8,8 @@ import at.alexkiefer.voltboy.components.cpu.registers.Register;
 import at.alexkiefer.voltboy.components.cpu.registers.Registers;
 import at.alexkiefer.voltboy.util.BitUtils;
 
+import java.util.Arrays;
+
 public class CPU extends ConnectedInternal implements Tickable {
 
     private final Registers reg;
@@ -15,6 +17,8 @@ public class CPU extends ConnectedInternal implements Tickable {
     private boolean ime;
 
     private int cycle;
+
+    private boolean prefixed;
     private int opCode;
 
     private int data;
@@ -22,6 +26,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private final Instruction[] instr;
     private final Instruction[] cbInstr;
+    private Instruction currInstr;
 
     public CPU(VoltBoy gb) {
 
@@ -31,7 +36,9 @@ public class CPU extends ConnectedInternal implements Tickable {
 
         ime = true;
 
-        cycle = 2;
+        cycle = 1;
+
+        prefixed = false;
         opCode = 0x00;
 
         data = 0x00;
@@ -44,16 +51,19 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     }
 
-    private void initInstructions() {
-
-        instr[0x00] =
-
-    }
-
     @Override
     public void tick() {
 
+        if(cycle == 1) {
+
+            currInstr = prefixed ? cbInstr[opCode] : instr[opCode];
+            prefixed = false;
+
+        }
+
         cycle++;
+
+        currInstr.step();
 
     }
 
@@ -68,6 +78,531 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void fetch() {
         cycle = 1;
         opCode = read(reg.PC.getAndInc());
+    }
+
+    private void cbFetch() {
+        prefixed = true;
+        opCode = read(reg.PC.getAndInc());
+    }
+
+    private void initInstructions() {
+
+        Arrays.fill(instr, new Instruction(this::INVALID));
+
+        instr[0x00] = new Instruction(this::NOP);
+        instr[0x01] = new Instruction(() -> LD_r16_u16(reg.B, reg.C));
+        instr[0x02] = new Instruction(() -> LD__r16__A(reg.B, reg.C));
+        instr[0x03] = new Instruction(() -> INC_r16(reg.B, reg.C));
+        instr[0x04] = new Instruction(() -> INC_r8(reg.B));
+        instr[0x05] = new Instruction(() -> DEC_r8(reg.B));
+        instr[0x06] = new Instruction(() -> LD_r8_u8(reg.B));
+        instr[0x07] = new Instruction(this::RLCA);
+        instr[0x08] = new Instruction(this::LD__u16__SP);
+        instr[0x09] = new Instruction(() -> ADD_HL_r16(reg.B, reg.C));
+        instr[0x0A] = new Instruction(() -> LD_A__r16_(reg.B, reg.C));
+        instr[0x0B] = new Instruction(() -> DEC_r16(reg.B, reg.C));
+        instr[0x0C] = new Instruction(() -> INC_r8(reg.C));
+        instr[0x0D] = new Instruction(() -> DEC_r8(reg.C));
+        instr[0x0E] = new Instruction(() -> LD_r8_u8(reg.C));
+        instr[0x0F] = new Instruction(this::RRCA);
+        instr[0x10] = new Instruction(this::STOP);
+        instr[0x11] = new Instruction(() -> LD_r16_u16(reg.D, reg.E));
+        instr[0x12] = new Instruction(() -> LD__r16__A(reg.D, reg.E));
+        instr[0x13] = new Instruction(() -> INC_r16(reg.D, reg.E));
+        instr[0x14] = new Instruction(() -> INC_r8(reg.D));
+        instr[0x15] = new Instruction(() -> DEC_r8(reg.D));
+        instr[0x16] = new Instruction(() -> LD_r8_u8(reg.D));
+        instr[0x17] = new Instruction(this::RLA);
+        instr[0x18] = new Instruction(this::JR_i8);
+        instr[0x19] = new Instruction(() -> ADD_HL_r16(reg.D, reg.E));
+        instr[0x1A] = new Instruction(() -> LD_A__r16_(reg.D, reg.E));
+        instr[0x1B] = new Instruction(() -> DEC_r16(reg.D, reg.E));
+        instr[0x1C] = new Instruction(() -> INC_r8(reg.E));
+        instr[0x1D] = new Instruction(() -> DEC_r8(reg.E));
+        instr[0x1E] = new Instruction(() -> LD_r8_u8(reg.E));
+        instr[0x1F] = new Instruction(this::RRA);
+        instr[0x20] = new Instruction(() -> JR_i8_cond(!reg.F.isZero()));
+        instr[0x21] = new Instruction(() -> LD_r16_u16(reg.H, reg.L));
+        instr[0x22] = new Instruction(this::LD__HLI__A);
+        instr[0x23] = new Instruction(() -> INC_r16(reg.H, reg.L));
+        instr[0x24] = new Instruction(() -> INC_r8(reg.H));
+        instr[0x25] = new Instruction(() -> DEC_r8(reg.H));
+        instr[0x26] = new Instruction(() -> LD_r8_u8(reg.H));
+        instr[0x27] = new Instruction(this::DAA);
+        instr[0x28] = new Instruction(() -> JR_i8_cond(reg.F.isZero()));
+        instr[0x29] = new Instruction(() -> ADD_HL_r16(reg.H, reg.L));
+        instr[0x2A] = new Instruction(this::LD_A__HLI_);
+        instr[0x2B] = new Instruction(() -> DEC_r16(reg.H, reg.L));
+        instr[0x2C] = new Instruction(() -> INC_r8(reg.L));
+        instr[0x2D] = new Instruction(() -> DEC_r8(reg.L));
+        instr[0x2E] = new Instruction(() -> LD_r8_u8(reg.L));
+        instr[0x2F] = new Instruction(this::CPL);
+        instr[0x30] = new Instruction(() -> JR_i8_cond(!reg.F.isCarry()));
+        instr[0x31] = new Instruction(this::LD_SP_u16);
+        instr[0x32] = new Instruction(this::LD__HLD__A);
+        instr[0x33] = new Instruction(this::INC_SP);
+        instr[0x34] = new Instruction(this::INC__HL_);
+        instr[0x35] = new Instruction(this::DEC__HL_);
+        instr[0x36] = new Instruction(this::LD__HL__u8);
+        instr[0x37] = new Instruction(this::SCF);
+        instr[0x38] = new Instruction(() -> JR_i8_cond(reg.F.isCarry()));
+        instr[0x39] = new Instruction(this::ADD_HL_SP);
+        instr[0x3A] = new Instruction(this::LD_A__HLD_);
+        instr[0x3B] = new Instruction(this::DEC_SP);
+        instr[0x3C] = new Instruction(() -> INC_r8(reg.A));
+        instr[0x3D] = new Instruction(() -> DEC_r8(reg.A));
+        instr[0x3E] = new Instruction(() -> LD_r8_u8(reg.A));
+        instr[0x3F] = new Instruction(this::CCF);
+        instr[0x40] = new Instruction(() -> LD_r8_r8(reg.B, reg.B));
+        instr[0x41] = new Instruction(() -> LD_r8_r8(reg.B, reg.C));
+        instr[0x42] = new Instruction(() -> LD_r8_r8(reg.B, reg.D));
+        instr[0x43] = new Instruction(() -> LD_r8_r8(reg.B, reg.E));
+        instr[0x44] = new Instruction(() -> LD_r8_r8(reg.B, reg.H));
+        instr[0x45] = new Instruction(() -> LD_r8_r8(reg.B, reg.L));
+        instr[0x46] = new Instruction(() -> LD_r8__HL_(reg.B));
+        instr[0x47] = new Instruction(() -> LD_r8_r8(reg.B, reg.A));
+        instr[0x48] = new Instruction(() -> LD_r8_r8(reg.C, reg.B));
+        instr[0x49] = new Instruction(() -> LD_r8_r8(reg.C, reg.C));
+        instr[0x4A] = new Instruction(() -> LD_r8_r8(reg.C, reg.D));
+        instr[0x4B] = new Instruction(() -> LD_r8_r8(reg.C, reg.E));
+        instr[0x4C] = new Instruction(() -> LD_r8_r8(reg.C, reg.H));
+        instr[0x4D] = new Instruction(() -> LD_r8_r8(reg.C, reg.L));
+        instr[0x4E] = new Instruction(() -> LD_r8__HL_(reg.C));
+        instr[0x4F] = new Instruction(() -> LD_r8_r8(reg.C, reg.A));
+        instr[0x50] = new Instruction(() -> LD_r8_r8(reg.D, reg.B));
+        instr[0x51] = new Instruction(() -> LD_r8_r8(reg.D, reg.C));
+        instr[0x52] = new Instruction(() -> LD_r8_r8(reg.D, reg.D));
+        instr[0x53] = new Instruction(() -> LD_r8_r8(reg.D, reg.E));
+        instr[0x54] = new Instruction(() -> LD_r8_r8(reg.D, reg.H));
+        instr[0x55] = new Instruction(() -> LD_r8_r8(reg.D, reg.L));
+        instr[0x56] = new Instruction(() -> LD_r8__HL_(reg.D));
+        instr[0x57] = new Instruction(() -> LD_r8_r8(reg.D, reg.A));
+        instr[0x58] = new Instruction(() -> LD_r8_r8(reg.E, reg.B));
+        instr[0x59] = new Instruction(() -> LD_r8_r8(reg.E, reg.C));
+        instr[0x5A] = new Instruction(() -> LD_r8_r8(reg.E, reg.D));
+        instr[0x5B] = new Instruction(() -> LD_r8_r8(reg.E, reg.E));
+        instr[0x5C] = new Instruction(() -> LD_r8_r8(reg.E, reg.H));
+        instr[0x5D] = new Instruction(() -> LD_r8_r8(reg.E, reg.L));
+        instr[0x5E] = new Instruction(() -> LD_r8__HL_(reg.E));
+        instr[0x5F] = new Instruction(() -> LD_r8_r8(reg.E, reg.A));
+        instr[0x60] = new Instruction(() -> LD_r8_r8(reg.H, reg.B));
+        instr[0x61] = new Instruction(() -> LD_r8_r8(reg.H, reg.C));
+        instr[0x62] = new Instruction(() -> LD_r8_r8(reg.H, reg.D));
+        instr[0x63] = new Instruction(() -> LD_r8_r8(reg.H, reg.E));
+        instr[0x64] = new Instruction(() -> LD_r8_r8(reg.H, reg.H));
+        instr[0x65] = new Instruction(() -> LD_r8_r8(reg.H, reg.L));
+        instr[0x66] = new Instruction(() -> LD_r8__HL_(reg.H));
+        instr[0x67] = new Instruction(() -> LD_r8_r8(reg.H, reg.A));
+        instr[0x68] = new Instruction(() -> LD_r8_r8(reg.L, reg.B));
+        instr[0x69] = new Instruction(() -> LD_r8_r8(reg.L, reg.C));
+        instr[0x6A] = new Instruction(() -> LD_r8_r8(reg.L, reg.D));
+        instr[0x6B] = new Instruction(() -> LD_r8_r8(reg.L, reg.E));
+        instr[0x6C] = new Instruction(() -> LD_r8_r8(reg.L, reg.H));
+        instr[0x6D] = new Instruction(() -> LD_r8_r8(reg.L, reg.L));
+        instr[0x6E] = new Instruction(() -> LD_r8__HL_(reg.L));
+        instr[0x6F] = new Instruction(() -> LD_r8_r8(reg.L, reg.A));
+        instr[0x70] = new Instruction(() -> LD__HL__r8(reg.B));
+        instr[0x71] = new Instruction(() -> LD__HL__r8(reg.C));
+        instr[0x72] = new Instruction(() -> LD__HL__r8(reg.D));
+        instr[0x73] = new Instruction(() -> LD__HL__r8(reg.E));
+        instr[0x74] = new Instruction(() -> LD__HL__r8(reg.H));
+        instr[0x75] = new Instruction(() -> LD__HL__r8(reg.L));
+        instr[0x76] = new Instruction(this::HALT);
+        instr[0x77] = new Instruction(() -> LD__HL__r8(reg.A));
+        instr[0x78] = new Instruction(() -> LD_r8_r8(reg.A, reg.B));
+        instr[0x79] = new Instruction(() -> LD_r8_r8(reg.A, reg.C));
+        instr[0x7A] = new Instruction(() -> LD_r8_r8(reg.A, reg.D));
+        instr[0x7B] = new Instruction(() -> LD_r8_r8(reg.A, reg.E));
+        instr[0x7C] = new Instruction(() -> LD_r8_r8(reg.A, reg.H));
+        instr[0x7D] = new Instruction(() -> LD_r8_r8(reg.A, reg.L));
+        instr[0x7E] = new Instruction(() -> LD_r8__HL_(reg.A));
+        instr[0x7F] = new Instruction(() -> LD_r8_r8(reg.A, reg.A));
+        instr[0x80] = new Instruction(() -> ADD_r8(reg.B));
+        instr[0x81] = new Instruction(() -> ADD_r8(reg.C));
+        instr[0x82] = new Instruction(() -> ADD_r8(reg.D));
+        instr[0x83] = new Instruction(() -> ADD_r8(reg.E));
+        instr[0x84] = new Instruction(() -> ADD_r8(reg.H));
+        instr[0x85] = new Instruction(() -> ADD_r8(reg.L));
+        instr[0x86] = new Instruction(this::ADD__HL_);
+        instr[0x87] = new Instruction(() -> ADD_r8(reg.A));
+        instr[0x88] = new Instruction(() -> ADC_r8(reg.B));
+        instr[0x89] = new Instruction(() -> ADC_r8(reg.C));
+        instr[0x8A] = new Instruction(() -> ADC_r8(reg.D));
+        instr[0x8B] = new Instruction(() -> ADC_r8(reg.E));
+        instr[0x8C] = new Instruction(() -> ADC_r8(reg.H));
+        instr[0x8D] = new Instruction(() -> ADC_r8(reg.L));
+        instr[0x8E] = new Instruction(this::ADC__HL_);
+        instr[0x8F] = new Instruction(() -> ADC_r8(reg.A));
+        instr[0x90] = new Instruction(() -> SUB_r8(reg.B));
+        instr[0x91] = new Instruction(() -> SUB_r8(reg.C));
+        instr[0x92] = new Instruction(() -> SUB_r8(reg.D));
+        instr[0x93] = new Instruction(() -> SUB_r8(reg.E));
+        instr[0x94] = new Instruction(() -> SUB_r8(reg.H));
+        instr[0x95] = new Instruction(() -> SUB_r8(reg.L));
+        instr[0x96] = new Instruction(this::SUB__HL_);
+        instr[0x97] = new Instruction(() -> SUB_r8(reg.A));
+        instr[0x98] = new Instruction(() -> SBC_r8(reg.B));
+        instr[0x99] = new Instruction(() -> SBC_r8(reg.C));
+        instr[0x9A] = new Instruction(() -> SBC_r8(reg.D));
+        instr[0x9B] = new Instruction(() -> SBC_r8(reg.E));
+        instr[0x9C] = new Instruction(() -> SBC_r8(reg.H));
+        instr[0x9D] = new Instruction(() -> SBC_r8(reg.L));
+        instr[0x9E] = new Instruction(this::SBC__HL_);
+        instr[0x9F] = new Instruction(() -> SBC_r8(reg.A));
+        instr[0xA0] = new Instruction(() -> AND_r8(reg.B));
+        instr[0xA1] = new Instruction(() -> AND_r8(reg.C));
+        instr[0xA2] = new Instruction(() -> AND_r8(reg.D));
+        instr[0xA3] = new Instruction(() -> AND_r8(reg.E));
+        instr[0xA4] = new Instruction(() -> AND_r8(reg.H));
+        instr[0xA5] = new Instruction(() -> AND_r8(reg.L));
+        instr[0xA6] = new Instruction(this::AND__HL_);
+        instr[0xA7] = new Instruction(() -> AND_r8(reg.A));
+        instr[0xA8] = new Instruction(() -> XOR_r8(reg.B));
+        instr[0xA9] = new Instruction(() -> XOR_r8(reg.C));
+        instr[0xAA] = new Instruction(() -> XOR_r8(reg.D));
+        instr[0xAB] = new Instruction(() -> XOR_r8(reg.E));
+        instr[0xAC] = new Instruction(() -> XOR_r8(reg.H));
+        instr[0xAD] = new Instruction(() -> XOR_r8(reg.L));
+        instr[0xAE] = new Instruction(this::XOR__HL_);
+        instr[0xAF] = new Instruction(() -> XOR_r8(reg.A));
+        instr[0xB0] = new Instruction(() -> OR_r8(reg.B));
+        instr[0xB1] = new Instruction(() -> OR_r8(reg.C));
+        instr[0xB2] = new Instruction(() -> OR_r8(reg.D));
+        instr[0xB3] = new Instruction(() -> OR_r8(reg.E));
+        instr[0xB4] = new Instruction(() -> OR_r8(reg.H));
+        instr[0xB5] = new Instruction(() -> OR_r8(reg.L));
+        instr[0xB6] = new Instruction(this::OR__HL_);
+        instr[0xB7] = new Instruction(() -> OR_r8(reg.A));
+        instr[0xB8] = new Instruction(() -> CP_r8(reg.B));
+        instr[0xB9] = new Instruction(() -> CP_r8(reg.C));
+        instr[0xBA] = new Instruction(() -> CP_r8(reg.D));
+        instr[0xBB] = new Instruction(() -> CP_r8(reg.E));
+        instr[0xBC] = new Instruction(() -> CP_r8(reg.H));
+        instr[0xBD] = new Instruction(() -> CP_r8(reg.L));
+        instr[0xBE] = new Instruction(this::CP__HL_);
+        instr[0xBF] = new Instruction(() -> CP_r8(reg.A));
+        instr[0xC0] = new Instruction(() -> RET_cond(!reg.F.isZero()));
+        instr[0xC1] = new Instruction(() -> POP_r16(reg.B, reg.C));
+        instr[0xC2] = new Instruction(() -> JP_u16_cond(!reg.F.isZero()));
+        instr[0xC3] = new Instruction(this::JP_u16);
+        instr[0xC4] = new Instruction(() -> CALL_u16_cond(!reg.F.isZero()));
+        instr[0xC5] = new Instruction(() -> PUSH_r16(reg.B, reg.C));
+        instr[0xC6] = new Instruction(this::ADD_u8);
+        instr[0xC7] = new Instruction(() -> RST(0x00));
+        instr[0xC8] = new Instruction(() -> RET_cond(reg.F.isZero()));
+        instr[0xC9] = new Instruction(this::RET);
+        instr[0xCA] = new Instruction(() -> JP_u16_cond(reg.F.isZero()));
+        instr[0xCB] = new Instruction(this::CB);
+        instr[0xCC] = new Instruction(() -> CALL_u16_cond(reg.F.isZero()));
+        instr[0xCD] = new Instruction(this::CALL_u16);
+        instr[0xCE] = new Instruction(this::ADC_u8);
+        instr[0xCF] = new Instruction(() -> RST(0x08));
+        instr[0xD0] = new Instruction(() -> RET_cond(!reg.F.isCarry()));
+        instr[0xD1] = new Instruction(() -> POP_r16(reg.D, reg.E));
+        instr[0xD2] = new Instruction(() -> JP_u16_cond(!reg.F.isCarry()));
+        // instr[0xD3]
+        instr[0xD4] = new Instruction(() -> CALL_u16_cond(!reg.F.isCarry()));
+        instr[0xD5] = new Instruction(() -> PUSH_r16(reg.D, reg.E));
+        instr[0xD6] = new Instruction(this::SUB_u8);
+        instr[0xD7] = new Instruction(() -> RST(0x10));
+        instr[0xD8] = new Instruction(() -> RET_cond(reg.F.isCarry()));
+        instr[0xD9] = new Instruction(this::RETI);
+        instr[0xDA] = new Instruction(() -> JP_u16_cond(reg.F.isCarry()));
+        // instr[0xDB]
+        instr[0xDC] = new Instruction(() -> CALL_u16_cond(reg.F.isCarry()));
+        // instr[0xDD]
+        instr[0xDE] = new Instruction(this::SBC_u8);
+        instr[0xDF] = new Instruction(() -> RST(0x18));
+        instr[0xE0] = new Instruction(this::LDH__u8__A);
+        instr[0xE1] = new Instruction(() -> POP_r16(reg.H, reg.L));
+        instr[0xE2] = new Instruction(this::LDH__C__A);
+        // instr[0xE3]
+        // instr[0xE4]
+        instr[0xE5] = new Instruction(() -> PUSH_r16(reg.H, reg.L));
+        instr[0xE6] = new Instruction(this::AND_u8);
+        instr[0xE7] = new Instruction(() -> RST(0x20));
+        instr[0xE8] = new Instruction(this::ADD_SP_i8);
+        instr[0xE9] = new Instruction(this::JP_HL);
+        instr[0xEA] = new Instruction(this::LD__u16__A);
+        // instr[0xEB]
+        // instr[0xEC]
+        // instr[0xED]
+        instr[0xEE] = new Instruction(this::XOR_u8);
+        instr[0xEF] = new Instruction(() -> RST(0x28));
+        instr[0xF0] = new Instruction(this::LDH_A__u8_);
+        instr[0xF1] = new Instruction(() -> POP_r16(reg.A, reg.F));
+        instr[0xF2] = new Instruction(this::LDH_A__C_);
+        instr[0xF3] = new Instruction(this::DI);
+        // instr[0xF4]
+        instr[0xF5] = new Instruction(() -> PUSH_r16(reg.A, reg.F));
+        instr[0xF6] = new Instruction(this::OR_u8);
+        instr[0xF7] = new Instruction(() -> RST(0x30));
+        instr[0xF8] = new Instruction(this::ADD_HL_SPpi8);
+        instr[0xF9] = new Instruction(this::LD_SP_HL);
+        instr[0xFA] = new Instruction(this::LD_A__u16_);
+        instr[0xFB] = new Instruction(this::EI);
+        // instr[0xFC]
+        // instr[0xFD]
+        instr[0xFE] = new Instruction(this::CP_u8);
+        instr[0xFF] = new Instruction(() -> RST(0x38));
+
+        cbInstr[0x00] = new Instruction(() -> RLC_r8(reg.B));
+        cbInstr[0x01] = new Instruction(() -> RLC_r8(reg.C));
+        cbInstr[0x02] = new Instruction(() -> RLC_r8(reg.D));
+        cbInstr[0x03] = new Instruction(() -> RLC_r8(reg.E));
+        cbInstr[0x04] = new Instruction(() -> RLC_r8(reg.H));
+        cbInstr[0x05] = new Instruction(() -> RLC_r8(reg.L));
+        cbInstr[0x06] = new Instruction(this::RLC__HL_);
+        cbInstr[0x07] = new Instruction(() -> RLC_r8(reg.A));
+        cbInstr[0x08] = new Instruction(() -> RRC_r8(reg.B));
+        cbInstr[0x09] = new Instruction(() -> RRC_r8(reg.C));
+        cbInstr[0x0A] = new Instruction(() -> RRC_r8(reg.D));
+        cbInstr[0x0B] = new Instruction(() -> RRC_r8(reg.E));
+        cbInstr[0x0C] = new Instruction(() -> RRC_r8(reg.H));
+        cbInstr[0x0D] = new Instruction(() -> RRC_r8(reg.L));
+        cbInstr[0x0E] = new Instruction(this::RRC__HL_);
+        cbInstr[0x0F] = new Instruction(() -> RRC_r8(reg.A));
+        cbInstr[0x10] = new Instruction(() -> RL_r8(reg.B));
+        cbInstr[0x11] = new Instruction(() -> RL_r8(reg.C));
+        cbInstr[0x12] = new Instruction(() -> RL_r8(reg.D));
+        cbInstr[0x13] = new Instruction(() -> RL_r8(reg.E));
+        cbInstr[0x14] = new Instruction(() -> RL_r8(reg.H));
+        cbInstr[0x15] = new Instruction(() -> RL_r8(reg.L));
+        cbInstr[0x16] = new Instruction(this::RL__HL_);
+        cbInstr[0x17] = new Instruction(() -> RL_r8(reg.A));
+        cbInstr[0x18] = new Instruction(() -> RR_r8(reg.B));
+        cbInstr[0x19] = new Instruction(() -> RR_r8(reg.C));
+        cbInstr[0x1A] = new Instruction(() -> RR_r8(reg.D));
+        cbInstr[0x1B] = new Instruction(() -> RR_r8(reg.E));
+        cbInstr[0x1C] = new Instruction(() -> RR_r8(reg.H));
+        cbInstr[0x1D] = new Instruction(() -> RR_r8(reg.L));
+        cbInstr[0x1E] = new Instruction(this::RR__HL_);
+        cbInstr[0x1F] = new Instruction(() -> RR_r8(reg.A));
+        cbInstr[0x20] = new Instruction(() -> SLA_r8(reg.B));
+        cbInstr[0x21] = new Instruction(() -> SLA_r8(reg.C));
+        cbInstr[0x22] = new Instruction(() -> SLA_r8(reg.D));
+        cbInstr[0x23] = new Instruction(() -> SLA_r8(reg.E));
+        cbInstr[0x24] = new Instruction(() -> SLA_r8(reg.H));
+        cbInstr[0x25] = new Instruction(() -> SLA_r8(reg.L));
+        cbInstr[0x26] = new Instruction(this::SLA__HL_);
+        cbInstr[0x27] = new Instruction(() -> SLA_r8(reg.A));
+        cbInstr[0x28] = new Instruction(() -> SRA_r8(reg.B));
+        cbInstr[0x29] = new Instruction(() -> SRA_r8(reg.C));
+        cbInstr[0x2A] = new Instruction(() -> SRA_r8(reg.D));
+        cbInstr[0x2B] = new Instruction(() -> SRA_r8(reg.E));
+        cbInstr[0x2C] = new Instruction(() -> SRA_r8(reg.H));
+        cbInstr[0x2D] = new Instruction(() -> SRA_r8(reg.L));
+        cbInstr[0x2E] = new Instruction(this::SRA__HL_);
+        cbInstr[0x2F] = new Instruction(() -> SRA_r8(reg.A));
+        cbInstr[0x30] = new Instruction(() -> SWAP_r8(reg.B));
+        cbInstr[0x31] = new Instruction(() -> SWAP_r8(reg.C));
+        cbInstr[0x32] = new Instruction(() -> SWAP_r8(reg.D));
+        cbInstr[0x33] = new Instruction(() -> SWAP_r8(reg.E));
+        cbInstr[0x34] = new Instruction(() -> SWAP_r8(reg.H));
+        cbInstr[0x35] = new Instruction(() -> SWAP_r8(reg.L));
+        cbInstr[0x36] = new Instruction(this::SWAP__HL_);
+        cbInstr[0x37] = new Instruction(() -> SWAP_r8(reg.A));
+        cbInstr[0x38] = new Instruction(() -> SRL_r8(reg.B));
+        cbInstr[0x39] = new Instruction(() -> SRL_r8(reg.C));
+        cbInstr[0x3A] = new Instruction(() -> SRL_r8(reg.D));
+        cbInstr[0x3B] = new Instruction(() -> SRL_r8(reg.E));
+        cbInstr[0x3C] = new Instruction(() -> SRL_r8(reg.H));
+        cbInstr[0x3D] = new Instruction(() -> SRL_r8(reg.L));
+        cbInstr[0x3E] = new Instruction(this::SRL__HL_);
+        cbInstr[0x3F] = new Instruction(() -> SRL_r8(reg.A));
+        cbInstr[0x40] = new Instruction(() -> BIT_r8(reg.B, 0));
+        cbInstr[0x41] = new Instruction(() -> BIT_r8(reg.C, 0));
+        cbInstr[0x42] = new Instruction(() -> BIT_r8(reg.D, 0));
+        cbInstr[0x43] = new Instruction(() -> BIT_r8(reg.E, 0));
+        cbInstr[0x44] = new Instruction(() -> BIT_r8(reg.H, 0));
+        cbInstr[0x45] = new Instruction(() -> BIT_r8(reg.L, 0));
+        cbInstr[0x46] = new Instruction(() -> BIT__HL_(0));
+        cbInstr[0x47] = new Instruction(() -> BIT_r8(reg.A, 0));
+        cbInstr[0x48] = new Instruction(() -> BIT_r8(reg.B, 1));
+        cbInstr[0x49] = new Instruction(() -> BIT_r8(reg.C, 1));
+        cbInstr[0x4A] = new Instruction(() -> BIT_r8(reg.D, 1));
+        cbInstr[0x4B] = new Instruction(() -> BIT_r8(reg.E, 1));
+        cbInstr[0x4C] = new Instruction(() -> BIT_r8(reg.H, 1));
+        cbInstr[0x4D] = new Instruction(() -> BIT_r8(reg.L, 1));
+        cbInstr[0x4E] = new Instruction(() -> BIT__HL_(1));
+        cbInstr[0x4F] = new Instruction(() -> BIT_r8(reg.A, 1));
+        cbInstr[0x50] = new Instruction(() -> BIT_r8(reg.B, 2));
+        cbInstr[0x51] = new Instruction(() -> BIT_r8(reg.C, 2));
+        cbInstr[0x52] = new Instruction(() -> BIT_r8(reg.D, 2));
+        cbInstr[0x53] = new Instruction(() -> BIT_r8(reg.E, 2));
+        cbInstr[0x54] = new Instruction(() -> BIT_r8(reg.H, 2));
+        cbInstr[0x55] = new Instruction(() -> BIT_r8(reg.L, 2));
+        cbInstr[0x56] = new Instruction(() -> BIT__HL_(2));
+        cbInstr[0x57] = new Instruction(() -> BIT_r8(reg.A, 2));
+        cbInstr[0x58] = new Instruction(() -> BIT_r8(reg.B, 3));
+        cbInstr[0x59] = new Instruction(() -> BIT_r8(reg.C, 3));
+        cbInstr[0x5A] = new Instruction(() -> BIT_r8(reg.D, 3));
+        cbInstr[0x5B] = new Instruction(() -> BIT_r8(reg.E, 3));
+        cbInstr[0x5C] = new Instruction(() -> BIT_r8(reg.H, 3));
+        cbInstr[0x5D] = new Instruction(() -> BIT_r8(reg.L, 3));
+        cbInstr[0x5E] = new Instruction(() -> BIT__HL_(3));
+        cbInstr[0x5F] = new Instruction(() -> BIT_r8(reg.A, 3));
+        cbInstr[0x60] = new Instruction(() -> BIT_r8(reg.B, 4));
+        cbInstr[0x61] = new Instruction(() -> BIT_r8(reg.C, 4));
+        cbInstr[0x62] = new Instruction(() -> BIT_r8(reg.D, 4));
+        cbInstr[0x63] = new Instruction(() -> BIT_r8(reg.E, 4));
+        cbInstr[0x64] = new Instruction(() -> BIT_r8(reg.H, 4));
+        cbInstr[0x65] = new Instruction(() -> BIT_r8(reg.L, 4));
+        cbInstr[0x66] = new Instruction(() -> BIT__HL_(4));
+        cbInstr[0x67] = new Instruction(() -> BIT_r8(reg.A, 4));
+        cbInstr[0x68] = new Instruction(() -> BIT_r8(reg.B, 5));
+        cbInstr[0x69] = new Instruction(() -> BIT_r8(reg.C, 5));
+        cbInstr[0x6A] = new Instruction(() -> BIT_r8(reg.D, 5));
+        cbInstr[0x6B] = new Instruction(() -> BIT_r8(reg.E, 5));
+        cbInstr[0x6C] = new Instruction(() -> BIT_r8(reg.H, 5));
+        cbInstr[0x6D] = new Instruction(() -> BIT_r8(reg.L, 5));
+        cbInstr[0x6E] = new Instruction(() -> BIT__HL_(5));
+        cbInstr[0x6F] = new Instruction(() -> BIT_r8(reg.A, 5));
+        cbInstr[0x70] = new Instruction(() -> BIT_r8(reg.B, 6));
+        cbInstr[0x71] = new Instruction(() -> BIT_r8(reg.C, 6));
+        cbInstr[0x72] = new Instruction(() -> BIT_r8(reg.D, 6));
+        cbInstr[0x73] = new Instruction(() -> BIT_r8(reg.E, 6));
+        cbInstr[0x74] = new Instruction(() -> BIT_r8(reg.H, 6));
+        cbInstr[0x75] = new Instruction(() -> BIT_r8(reg.L, 6));
+        cbInstr[0x76] = new Instruction(() -> BIT__HL_(6));
+        cbInstr[0x77] = new Instruction(() -> BIT_r8(reg.A, 6));
+        cbInstr[0x78] = new Instruction(() -> BIT_r8(reg.B, 7));
+        cbInstr[0x79] = new Instruction(() -> BIT_r8(reg.C, 7));
+        cbInstr[0x7A] = new Instruction(() -> BIT_r8(reg.D, 7));
+        cbInstr[0x7B] = new Instruction(() -> BIT_r8(reg.E, 7));
+        cbInstr[0x7C] = new Instruction(() -> BIT_r8(reg.H, 7));
+        cbInstr[0x7D] = new Instruction(() -> BIT_r8(reg.L, 7));
+        cbInstr[0x7E] = new Instruction(() -> BIT__HL_(7));
+        cbInstr[0x7F] = new Instruction(() -> BIT_r8(reg.A, 7));
+        cbInstr[0x80] = new Instruction(() -> RES_r8(reg.B, 0));
+        cbInstr[0x81] = new Instruction(() -> RES_r8(reg.C, 0));
+        cbInstr[0x82] = new Instruction(() -> RES_r8(reg.D, 0));
+        cbInstr[0x83] = new Instruction(() -> RES_r8(reg.E, 0));
+        cbInstr[0x84] = new Instruction(() -> RES_r8(reg.H, 0));
+        cbInstr[0x85] = new Instruction(() -> RES_r8(reg.L, 0));
+        cbInstr[0x86] = new Instruction(() -> RES__HL_(0));
+        cbInstr[0x87] = new Instruction(() -> RES_r8(reg.A, 0));
+        cbInstr[0x88] = new Instruction(() -> RES_r8(reg.B, 1));
+        cbInstr[0x89] = new Instruction(() -> RES_r8(reg.C, 1));
+        cbInstr[0x8A] = new Instruction(() -> RES_r8(reg.D, 1));
+        cbInstr[0x8B] = new Instruction(() -> RES_r8(reg.E, 1));
+        cbInstr[0x8C] = new Instruction(() -> RES_r8(reg.H, 1));
+        cbInstr[0x8D] = new Instruction(() -> RES_r8(reg.L, 1));
+        cbInstr[0x8E] = new Instruction(() -> RES__HL_(1));
+        cbInstr[0x8F] = new Instruction(() -> RES_r8(reg.A, 1));
+        cbInstr[0x90] = new Instruction(() -> RES_r8(reg.B, 2));
+        cbInstr[0x91] = new Instruction(() -> RES_r8(reg.C, 2));
+        cbInstr[0x92] = new Instruction(() -> RES_r8(reg.D, 2));
+        cbInstr[0x93] = new Instruction(() -> RES_r8(reg.E, 2));
+        cbInstr[0x94] = new Instruction(() -> RES_r8(reg.H, 2));
+        cbInstr[0x95] = new Instruction(() -> RES_r8(reg.L, 2));
+        cbInstr[0x96] = new Instruction(() -> RES__HL_(2));
+        cbInstr[0x97] = new Instruction(() -> RES_r8(reg.A, 2));
+        cbInstr[0x98] = new Instruction(() -> RES_r8(reg.B, 3));
+        cbInstr[0x99] = new Instruction(() -> RES_r8(reg.C, 3));
+        cbInstr[0x9A] = new Instruction(() -> RES_r8(reg.D, 3));
+        cbInstr[0x9B] = new Instruction(() -> RES_r8(reg.E, 3));
+        cbInstr[0x9C] = new Instruction(() -> RES_r8(reg.H, 3));
+        cbInstr[0x9D] = new Instruction(() -> RES_r8(reg.L, 3));
+        cbInstr[0x9E] = new Instruction(() -> RES__HL_(3));
+        cbInstr[0x9F] = new Instruction(() -> RES_r8(reg.A, 3));
+        cbInstr[0xA0] = new Instruction(() -> RES_r8(reg.B, 4));
+        cbInstr[0xA1] = new Instruction(() -> RES_r8(reg.C, 4));
+        cbInstr[0xA2] = new Instruction(() -> RES_r8(reg.D, 4));
+        cbInstr[0xA3] = new Instruction(() -> RES_r8(reg.E, 4));
+        cbInstr[0xA4] = new Instruction(() -> RES_r8(reg.H, 4));
+        cbInstr[0xA5] = new Instruction(() -> RES_r8(reg.L, 4));
+        cbInstr[0xA6] = new Instruction(() -> RES__HL_(4));
+        cbInstr[0xA7] = new Instruction(() -> RES_r8(reg.A, 4));
+        cbInstr[0xA8] = new Instruction(() -> RES_r8(reg.B, 5));
+        cbInstr[0xA9] = new Instruction(() -> RES_r8(reg.C, 5));
+        cbInstr[0xAA] = new Instruction(() -> RES_r8(reg.D, 5));
+        cbInstr[0xAB] = new Instruction(() -> RES_r8(reg.E, 5));
+        cbInstr[0xAC] = new Instruction(() -> RES_r8(reg.H, 5));
+        cbInstr[0xAD] = new Instruction(() -> RES_r8(reg.L, 5));
+        cbInstr[0xAE] = new Instruction(() -> RES__HL_(5));
+        cbInstr[0xAF] = new Instruction(() -> RES_r8(reg.A, 5));
+        cbInstr[0xB0] = new Instruction(() -> RES_r8(reg.B, 6));
+        cbInstr[0xB1] = new Instruction(() -> RES_r8(reg.C, 6));
+        cbInstr[0xB2] = new Instruction(() -> RES_r8(reg.D, 6));
+        cbInstr[0xB3] = new Instruction(() -> RES_r8(reg.E, 6));
+        cbInstr[0xB4] = new Instruction(() -> RES_r8(reg.H, 6));
+        cbInstr[0xB5] = new Instruction(() -> RES_r8(reg.L, 6));
+        cbInstr[0xB6] = new Instruction(() -> RES__HL_(6));
+        cbInstr[0xB7] = new Instruction(() -> RES_r8(reg.A, 6));
+        cbInstr[0xB8] = new Instruction(() -> RES_r8(reg.B, 7));
+        cbInstr[0xB9] = new Instruction(() -> RES_r8(reg.C, 7));
+        cbInstr[0xBA] = new Instruction(() -> RES_r8(reg.D, 7));
+        cbInstr[0xBB] = new Instruction(() -> RES_r8(reg.E, 7));
+        cbInstr[0xBC] = new Instruction(() -> RES_r8(reg.H, 7));
+        cbInstr[0xBD] = new Instruction(() -> RES_r8(reg.L, 7));
+        cbInstr[0xBE] = new Instruction(() -> RES__HL_(7));
+        cbInstr[0xBF] = new Instruction(() -> RES_r8(reg.A, 7));
+        cbInstr[0xC0] = new Instruction(() -> SET_r8(reg.B, 0));
+        cbInstr[0xC1] = new Instruction(() -> SET_r8(reg.C, 0));
+        cbInstr[0xC2] = new Instruction(() -> SET_r8(reg.D, 0));
+        cbInstr[0xC3] = new Instruction(() -> SET_r8(reg.E, 0));
+        cbInstr[0xC4] = new Instruction(() -> SET_r8(reg.H, 0));
+        cbInstr[0xC5] = new Instruction(() -> SET_r8(reg.L, 0));
+        cbInstr[0xC6] = new Instruction(() -> SET__HL_(0));
+        cbInstr[0xC7] = new Instruction(() -> SET_r8(reg.A, 0));
+        cbInstr[0xC8] = new Instruction(() -> SET_r8(reg.B, 1));
+        cbInstr[0xC9] = new Instruction(() -> SET_r8(reg.C, 1));
+        cbInstr[0xCA] = new Instruction(() -> SET_r8(reg.D, 1));
+        cbInstr[0xCB] = new Instruction(() -> SET_r8(reg.E, 1));
+        cbInstr[0xCC] = new Instruction(() -> SET_r8(reg.H, 1));
+        cbInstr[0xCD] = new Instruction(() -> SET_r8(reg.L, 1));
+        cbInstr[0xCE] = new Instruction(() -> SET__HL_(1));
+        cbInstr[0xCF] = new Instruction(() -> SET_r8(reg.A, 1));
+        cbInstr[0xD0] = new Instruction(() -> SET_r8(reg.B, 2));
+        cbInstr[0xD1] = new Instruction(() -> SET_r8(reg.C, 2));
+        cbInstr[0xD2] = new Instruction(() -> SET_r8(reg.D, 2));
+        cbInstr[0xD3] = new Instruction(() -> SET_r8(reg.E, 2));
+        cbInstr[0xD4] = new Instruction(() -> SET_r8(reg.H, 2));
+        cbInstr[0xD5] = new Instruction(() -> SET_r8(reg.L, 2));
+        cbInstr[0xD6] = new Instruction(() -> SET__HL_(2));
+        cbInstr[0xD7] = new Instruction(() -> SET_r8(reg.A, 2));
+        cbInstr[0xD8] = new Instruction(() -> SET_r8(reg.B, 3));
+        cbInstr[0xD9] = new Instruction(() -> SET_r8(reg.C, 3));
+        cbInstr[0xDA] = new Instruction(() -> SET_r8(reg.D, 3));
+        cbInstr[0xDB] = new Instruction(() -> SET_r8(reg.E, 3));
+        cbInstr[0xDC] = new Instruction(() -> SET_r8(reg.H, 3));
+        cbInstr[0xDD] = new Instruction(() -> SET_r8(reg.L, 3));
+        cbInstr[0xDE] = new Instruction(() -> SET__HL_(3));
+        cbInstr[0xDF] = new Instruction(() -> SET_r8(reg.A, 3));
+        cbInstr[0xE0] = new Instruction(() -> SET_r8(reg.B, 4));
+        cbInstr[0xE1] = new Instruction(() -> SET_r8(reg.C, 4));
+        cbInstr[0xE2] = new Instruction(() -> SET_r8(reg.D, 4));
+        cbInstr[0xE3] = new Instruction(() -> SET_r8(reg.E, 4));
+        cbInstr[0xE4] = new Instruction(() -> SET_r8(reg.H, 4));
+        cbInstr[0xE5] = new Instruction(() -> SET_r8(reg.L, 4));
+        cbInstr[0xE6] = new Instruction(() -> SET__HL_(4));
+        cbInstr[0xE7] = new Instruction(() -> SET_r8(reg.A, 4));
+        cbInstr[0xE8] = new Instruction(() -> SET_r8(reg.B, 5));
+        cbInstr[0xE9] = new Instruction(() -> SET_r8(reg.C, 5));
+        cbInstr[0xEA] = new Instruction(() -> SET_r8(reg.D, 5));
+        cbInstr[0xEB] = new Instruction(() -> SET_r8(reg.E, 5));
+        cbInstr[0xEC] = new Instruction(() -> SET_r8(reg.H, 5));
+        cbInstr[0xED] = new Instruction(() -> SET_r8(reg.L, 5));
+        cbInstr[0xEE] = new Instruction(() -> SET__HL_(5));
+        cbInstr[0xEF] = new Instruction(() -> SET_r8(reg.A, 5));
+        cbInstr[0xF0] = new Instruction(() -> SET_r8(reg.B, 6));
+        cbInstr[0xF1] = new Instruction(() -> SET_r8(reg.C, 6));
+        cbInstr[0xF2] = new Instruction(() -> SET_r8(reg.D, 6));
+        cbInstr[0xF3] = new Instruction(() -> SET_r8(reg.E, 6));
+        cbInstr[0xF4] = new Instruction(() -> SET_r8(reg.H, 6));
+        cbInstr[0xF5] = new Instruction(() -> SET_r8(reg.L, 6));
+        cbInstr[0xF6] = new Instruction(() -> SET__HL_(6));
+        cbInstr[0xF7] = new Instruction(() -> SET_r8(reg.A, 6));
+        cbInstr[0xF8] = new Instruction(() -> SET_r8(reg.B, 7));
+        cbInstr[0xF9] = new Instruction(() -> SET_r8(reg.C, 7));
+        cbInstr[0xFA] = new Instruction(() -> SET_r8(reg.D, 7));
+        cbInstr[0xFB] = new Instruction(() -> SET_r8(reg.E, 7));
+        cbInstr[0xFC] = new Instruction(() -> SET_r8(reg.H, 7));
+        cbInstr[0xFD] = new Instruction(() -> SET_r8(reg.L, 7));
+        cbInstr[0xFE] = new Instruction(() -> SET__HL_(7));
+        cbInstr[0xFF] = new Instruction(() -> SET_r8(reg.A, 7));
+
     }
 
     // 8-Bit Loads
@@ -120,7 +655,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void LD__HL__u8(Register src) {
+    private void LD__HL__u8() {
         switch(cycle) {
             case 2 -> {
                 data = read(reg.PC.getAndInc());
@@ -251,7 +786,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void LDH_A__HLD_() {
+    private void LD_A__HLD_() {
         switch(cycle) {
             case 2 -> {
                 data = read(reg.getHLValue());
@@ -265,7 +800,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void LDH__HLD__A() {
+    private void LD__HLD__A() {
         switch(cycle) {
             case 2 -> {
                 write(reg.getHLValue(), reg.A.getValue());
@@ -278,7 +813,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void LDH_A__HLI_() {
+    private void LD_A__HLI_() {
         switch(cycle) {
             case 2 -> {
                 data = read(reg.getHLValue());
@@ -292,7 +827,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void LDH__HLI__A() {
+    private void LD__HLI__A() {
         switch(cycle) {
             case 2 -> {
                 write(reg.getHLValue(), reg.A.getValue());
@@ -318,6 +853,22 @@ public class CPU extends ConnectedInternal implements Tickable {
             case 4 -> {
                 hi.setValue(data >> 8);
                 lo.setValue(data & 0xFF);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void LD_SP_u16() {
+        switch(cycle) {
+            case 2 -> {
+                data = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                data |= read(reg.PC.getAndInc()) << 8;
+            }
+            case 4 -> {
+                reg.SP.setValue(data);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -711,7 +1262,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void INC__HL_(Register r) {
+    private void INC__HL_() {
         switch(cycle) {
             case 2 -> {
                 data = read(reg.getHLValue());
@@ -750,7 +1301,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void DEC__HL_(Register r) {
+    private void DEC__HL_() {
         switch(cycle) {
             case 2 -> {
                 data = read(reg.getHLValue());
@@ -1449,6 +2000,14 @@ public class CPU extends ConnectedInternal implements Tickable {
         // TODO
     }
 
+    private void CB() {
+        switch(cycle) {
+            case 2 -> {
+                cbFetch();
+            }
+        }
+    }
+
     private void INVALID() {
         throw new RuntimeException("Invalid instruction - Opcode " + BitUtils.toHex(opCode) + " is not supported!");
     }
@@ -1887,7 +2446,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void SWAP_r8(Register r, int bit) {
+    private void SWAP_r8(Register r) {
         switch(cycle) {
             case 3 -> {
                 int hi = r.getValue() >> 4;
@@ -1900,7 +2459,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
     }
 
-    private void SWAP__HL_(int bit) {
+    private void SWAP__HL_() {
         switch(cycle) {
             case 3 -> {
                 data = read(reg.getHLValue());

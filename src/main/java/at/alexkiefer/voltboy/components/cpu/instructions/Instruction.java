@@ -8,7 +8,7 @@ public class Instruction {
         this.executable = executable;
     }
 
-    public void execute() {
+    public void step() {
         executable.execute();
     }
 

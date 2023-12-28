@@ -13,6 +13,12 @@ public class VoltBoy {
         dataBus = new DataBus(this);
     }
 
+    public void run() {
+        while(true) {
+            cpu.tick();
+        }
+    }
+
     public CPU getCpu() {
         return cpu;
     }
