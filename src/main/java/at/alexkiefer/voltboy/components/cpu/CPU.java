@@ -11,6 +11,8 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private final Registers reg;
 
+    private boolean ime;
+
     private int cycle;
     private int opCode;
 
@@ -22,6 +24,8 @@ public class CPU extends ConnectedInternal implements Tickable {
         super(gb);
 
         reg = new Registers();
+
+        ime = true;
 
         cycle = 2;
         opCode = 0x00;
@@ -308,16 +312,16 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void LD__u16__SP() {
         switch(cycle) {
             case 2 -> {
-                data = read(reg.PC.getAndInc());
+                addr = read(reg.PC.getAndInc());
             }
             case 3 -> {
-                data |= read(reg.PC.getAndInc()) << 8;
+                addr |= read(reg.PC.getAndInc()) << 8;
             }
             case 4 -> {
-                write(data++, reg.SP.getValue() >> 8);
+                write(addr++, reg.SP.getValue() >> 8);
             }
             case 5 -> {
-                write(data++, reg.SP.getValue() & 0xFF);
+                write(addr, reg.SP.getValue() & 0xFF);
             }
             case 6 -> {
                 fetch();
@@ -1000,6 +1004,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 // Cycle punishment due to IDU unit being used already for the 16-Bit increment, therefore we can't increment PC in the cycle before
                 fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
     }
 
@@ -1012,6 +1017,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 // Cycle punishment due to IDU unit being used already for the 16-Bit increment, therefore we can't increment PC in the cycle before
                 fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
     }
 
@@ -1027,6 +1033,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 // Cycle punishment due to IDU unit being used already for the 16-Bit increment, therefore we can't increment PC in the cycle before
                 fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
     }
 
@@ -1039,6 +1046,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 // Cycle punishment due to IDU unit being used already for the 16-Bit increment, therefore we can't increment PC in the cycle before
                 fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
     }
 
@@ -1067,6 +1075,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.A.setValue(res);
                 fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
     }
 
@@ -1095,6 +1104,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.A.setValue(res);
                 fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
     }
 
@@ -1130,6 +1140,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.SP.setValue(data);
                 fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
     }
 
@@ -1160,9 +1171,267 @@ public class CPU extends ConnectedInternal implements Tickable {
             case 4 -> {
                 data |= (reg.SP.getValue() & 0xFF00) + (addr << 8);
                 reg.H.setValue(data >> 8);
-                cycle = 1;
+                fetch();
             }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
         }
+    }
+
+    // Branches
+
+    private void JP_u16() {
+        switch(cycle) {
+            case 2 -> {
+                data = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                data |= read(reg.PC.getAndInc()) << 8;
+            }
+            case 4 -> {
+                // IDLE
+            }
+            case 5 -> {
+                reg.PC.setValue(data);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void JP_HL() {
+        switch(cycle) {
+            case 2 -> {
+                reg.PC.setValue(reg.getHLValue());
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void JP_u16_cond(boolean cond) {
+        switch(cycle) {
+            case 2 -> {
+                addr = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                addr |= read(reg.PC.getAndInc()) << 8;
+            }
+            case 4 -> {
+                if(cond) {
+                    // IDLE
+                } else {
+                    fetch();
+                }
+            }
+            case 5 -> {
+                reg.PC.setValue(addr);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void JR_i8() {
+        switch(cycle) {
+            case 2 -> {
+                data = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                // IDLE, or more specifically some ALU IDU magic, explained in https://gist.github.com/SonoSooS/c0055300670d678b5ae8433e20bea595#jr-e8 -> Not necessary to emulate in this detail
+            }
+            case 4 -> {
+                reg.PC.setValue(reg.PC.getValue() + ((byte) data));
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void JR_i8_cond(boolean cond) {
+        switch(cycle) {
+            case 2 -> {
+                data = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                if(cond) {
+                    // IDLE, or more specifically some ALU IDU magic, explained in https://gist.github.com/SonoSooS/c0055300670d678b5ae8433e20bea595#jr-e8 -> Not necessary to emulate in this detail
+                } else {
+                    fetch();
+                }
+            }
+            case 4 -> {
+                reg.PC.setValue(reg.PC.getValue() + ((byte) data));
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void CALL_u16() {
+        switch(cycle) {
+            case 2 -> {
+                addr = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                addr |= read(reg.PC.getAndInc()) << 8;
+            }
+            case 4 -> {
+                // BUS IDLE
+                reg.SP.dec();
+            }
+            case 5 -> {
+                write(reg.SP.getAndDec(), reg.PC.getValue() >> 8);
+            }
+            case 6 -> {
+                reg.SP.dec();
+            }
+            case 7 -> {
+                reg.PC.setValue(addr);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void CALL_u16_cond(boolean cond) {
+        switch(cycle) {
+            case 2 -> {
+                addr = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                addr |= read(reg.PC.getAndInc()) << 8;
+            }
+            case 4 -> {
+                if(cond) {
+                    // BUS IDLE
+                    reg.SP.dec();
+                } else {
+                    fetch();
+                }
+            }
+            case 5 -> {
+                write(reg.SP.getAndDec(), reg.PC.getValue() >> 8);
+            }
+            case 6 -> {
+                reg.SP.dec();
+            }
+            case 7 -> {
+                reg.PC.setValue(addr);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RET() {
+        switch(cycle) {
+            case 2 -> {
+                addr = read(reg.SP.getAndInc());
+            }
+            case 3 -> {
+                addr |= read(reg.SP.getAndInc()) << 8;
+            }
+            case 4 -> {
+                // BUS IDLE
+                reg.PC.setValue(addr);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RET_cond(boolean cond) {
+        switch(cycle) {
+            case 2 -> {
+                // IDLE -> Also more happening here, as stated in https://gist.github.com/SonoSooS/c0055300670d678b5ae8433e20bea595#ret-cc -> Also not necessary to implement
+            }
+            case 3 -> {
+                if(cond) {
+                    addr |= read(reg.SP.getAndInc()) << 8;
+                } else {
+                    fetch();
+                }
+            }
+            case 4 -> {
+                addr |= read(reg.SP.getAndInc()) << 8;
+            }
+            case 5 -> {
+                // BUS IDLE
+                reg.PC.setValue(addr);
+            }
+            case 6 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RETI() {
+        switch(cycle) {
+            case 2 -> {
+                addr = read(reg.SP.getAndInc());
+            }
+            case 3 -> {
+                addr |= read(reg.SP.getAndInc()) << 8;
+            }
+            case 4 -> {
+                // BUS IDLE
+                reg.PC.setValue(addr);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RST(int vec) {
+        switch(cycle) {
+            case 2 -> {
+                // BUS IDLE
+                reg.SP.dec();
+            }
+            case 3 -> {
+                write(reg.SP.getAndDec(), reg.PC.getValue() >> 8);
+            }
+            case 4 -> {
+                reg.SP.dec();
+            }
+            case 5 -> {
+                reg.PC.setValue(vec);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    // Misc
+
+    private void NOP() {
+        switch(cycle) {
+            case 2 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void EI() {
+        ime = true;
+    }
+
+    private void DI() {
+        // TODO
+    }
+
+    private void HALT() {
+        // TODO
+    }
+
+    private void STOP() {
+        // TODO
     }
 
     // Helpers
