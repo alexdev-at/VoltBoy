@@ -11,9 +11,6 @@ public class Registers {
     public final Register H;
     public final Register L;
 
-    public final Register W;
-    public final Register Z;
-
     public final Register PC;
     public final Register SP;
 
@@ -28,9 +25,6 @@ public class Registers {
         H = new Register(RegisterType.EIGHT_BIT, 0x01);
         L = new Register(RegisterType.EIGHT_BIT, 0x4D);
 
-        W = new Register(RegisterType.EIGHT_BIT, 0x00);
-        Z = new Register(RegisterType.EIGHT_BIT, 0x00);
-
         PC = new Register(RegisterType.SIXTEEN_BIT, 0x0100);
         SP = new Register(RegisterType.SIXTEEN_BIT, 0xFFFE);
 
@@ -44,16 +38,6 @@ public class Registers {
 
     public int getHLValue() {
         return (H.getValue() << 8) | L.getValue();
-    }
-
-    public void setWZValue(int value) {
-        value &= 0xFFFF;
-        W.setValue(value >> 8);
-        Z.setValue(value & 0xFF);
-    }
-
-    public int getWZValue() {
-        return (W.getValue() << 8) |Z.getValue();
     }
 
 }
