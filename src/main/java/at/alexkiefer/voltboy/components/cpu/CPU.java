@@ -288,4 +288,96 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     // 16-Bit Loads
 
+    private void LD_r16_u16(Register hi, Register lo) {
+        switch(cycle) {
+            case 2 -> {
+                data = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                data |= read(reg.PC.getAndInc()) << 8;
+            }
+            case 4 -> {
+                hi.setValue(data >> 8);
+                lo.setValue(data & 0xFF);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void LD__u16__SP() {
+        switch(cycle) {
+            case 2 -> {
+                data = read(reg.PC.getAndInc());
+            }
+            case 3 -> {
+                data |= read(reg.PC.getAndInc()) << 8;
+            }
+            case 4 -> {
+                write(data++, reg.SP.getValue() >> 8);
+            }
+            case 5 -> {
+                write(data++, reg.SP.getValue() & 0xFF);
+            }
+            case 6 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void LD_SP_HL() {
+        switch(cycle) {
+            case 2 -> {
+                // BUS IDLE
+                reg.SP.setValue(reg.getHLValue());
+            }
+            case 3 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void PUSH_r16(Register hi, Register lo) {
+        switch(cycle) {
+            case 2 -> {
+                // BUS IDLE
+                reg.SP.dec();
+            }
+            case 3 -> {
+                write(reg.SP.getAndDec(), hi.getValue());
+            }
+            case 4 -> {
+                reg.SP.dec();
+                write(reg.SP.getValue(), lo.getValue());
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void POP_r16(Register hi, Register lo) {
+        switch(cycle) {
+            case 2 -> {
+                data = read(reg.SP.getAndInc());
+            }
+            case 3 -> {
+                data |= read(reg.SP.getAndInc()) << 8;
+            }
+            case 4 -> {
+                hi.setValue(data >> 8);
+                lo.setValue(data & 0xFF);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    // 8-Bit ALU
+
+
+
 }
