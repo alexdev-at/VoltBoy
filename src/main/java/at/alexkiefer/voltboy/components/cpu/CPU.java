@@ -3,6 +3,7 @@ package at.alexkiefer.voltboy.components.cpu;
 import at.alexkiefer.voltboy.ConnectedInternal;
 import at.alexkiefer.voltboy.Tickable;
 import at.alexkiefer.voltboy.VoltBoy;
+import at.alexkiefer.voltboy.components.cpu.instructions.Instruction;
 import at.alexkiefer.voltboy.components.cpu.registers.Register;
 import at.alexkiefer.voltboy.components.cpu.registers.Registers;
 import at.alexkiefer.voltboy.util.BitUtils;
@@ -19,6 +20,9 @@ public class CPU extends ConnectedInternal implements Tickable {
     private int data;
     private int addr;
 
+    private final Instruction[] instr;
+    private final Instruction[] cbInstr;
+
     public CPU(VoltBoy gb) {
 
         super(gb);
@@ -32,6 +36,17 @@ public class CPU extends ConnectedInternal implements Tickable {
 
         data = 0x00;
         addr = 0x00;
+
+        instr = new Instruction[0x100];
+        cbInstr = new Instruction[0x100];
+
+        initInstructions();
+
+    }
+
+    private void initInstructions() {
+
+        instr[0x00] =
 
     }
 
@@ -1432,6 +1447,475 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void STOP() {
         // TODO
+    }
+
+    private void INVALID() {
+        throw new RuntimeException("Invalid instruction - Opcode " + BitUtils.toHex(opCode) + " is not supported!");
+    }
+
+    // 8-Bit Bits - Start with cycle 3 since cycle 2 is the CB fetch
+
+    private void RLCA() {
+        switch(cycle) {
+            case 3 -> {
+                int val = reg.A.getValue();
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int res = ((val << 1) & 0xFF) | bit;
+                reg.F.setZero(false);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                reg.A.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RLC_r8(Register r) {
+        switch(cycle) {
+            case 3 -> {
+                int val = r.getValue();
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int res = ((val << 1) & 0xFF) | bit;
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RLC__HL_() {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int val = data;
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int res = ((val << 1) & 0xFF) | bit;
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RRCA() {
+        switch(cycle) {
+            case 3 -> {
+                int val = reg.A.getValue();
+                int bit = val & BitUtils.M_ZERO;
+                int res = ((val >> 1) & 0xFF) | (bit << 7);
+                reg.F.setZero(false);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                reg.A.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RRC_r8(Register r) {
+        switch(cycle) {
+            case 3 -> {
+                int val = r.getValue();
+                int bit = val & BitUtils.M_ZERO;
+                int res = ((val >> 1) & 0xFF) | (bit << 7);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RRC__HL_() {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int val = data;
+                int bit = val & BitUtils.M_ZERO;
+                int res = ((val >> 1) & 0xFF) | (bit << 7);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RLA() {
+        switch(cycle) {
+            case 3 -> {
+                int val = reg.A.getValue();
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int carry = reg.F.isCarry() ? 1 : 0;
+                int res = ((val << 1) & 0xFF) | carry;
+                reg.F.setZero(false);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                reg.A.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RL_r8(Register r) {
+        switch(cycle) {
+            case 3 -> {
+                int val = r.getValue();
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int carry = reg.F.isCarry() ? 1 : 0;
+                int res = ((val << 1) & 0xFF) | carry;
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RL__HL_() {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int val = data;
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int carry = reg.F.isCarry() ? 1 : 0;
+                int res = ((val << 1) & 0xFF) | carry;
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RRA() {
+        switch(cycle) {
+            case 3 -> {
+                int val = reg.A.getValue();
+                int bit = val & BitUtils.M_ZERO;
+                int carry = reg.F.isCarry() ? 1 : 0;
+                int res = ((val >> 1) & 0xFF) | (carry << 7);
+                reg.F.setZero(false);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                reg.A.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RR_r8(Register r) {
+        switch(cycle) {
+            case 3 -> {
+                int val = r.getValue();
+                int bit = val & BitUtils.M_ZERO;
+                int carry = reg.F.isCarry() ? 1 : 0;
+                int res = ((val >> 1) & 0xFF) | (carry << 7);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RR__HL_() {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int val = data;
+                int bit = val & BitUtils.M_ZERO;
+                int carry = reg.F.isCarry() ? 1 : 0;
+                int res = ((val >> 1) & 0xFF) | (carry << 7);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SLA_r8(Register r) {
+        switch(cycle) {
+            case 3 -> {
+                int val = r.getValue();
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int res = (val << 1) & 0xFF;
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SLA__HL_() {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int val = data;
+                int bit = (val & BitUtils.M_SEVEN) >> 7;
+                int res = (val << 1) & 0xFF;
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SRA_r8(Register r) {
+        switch(cycle) {
+            case 3 -> {
+                int val = r.getValue();
+                int bit = val & BitUtils.M_ZERO;
+                int last = (val & BitUtils.M_SEVEN) >> 7;
+                int res = ((val >> 1) & 0xFF) | (last << 7);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SRA__HL_() {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int val = data;
+                int bit = val & BitUtils.M_ZERO;
+                int last = (val & BitUtils.M_SEVEN) >> 7;
+                int res = ((val >> 1) & 0xFF) | (last << 7);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SRL_r8(Register r) {
+        switch(cycle) {
+            case 3 -> {
+                int val = r.getValue();
+                int bit = val & BitUtils.M_ZERO;
+                int res = ((val >> 1) & 0xFF);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SRL__HL_() {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int val = data;
+                int bit = val & BitUtils.M_ZERO;
+                int res = ((val >> 1) & 0xFF);
+                reg.F.setZero((res & 0xFF) == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(bit != 0);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void BIT_r8(Register r, int bit) {
+        switch(cycle) {
+            case 3 -> {
+                int res = r.getValue() & (1 << bit);
+                reg.F.setZero(res == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(true);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void BIT__HL_(int bit) {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int res = data & (1 << bit);
+                reg.F.setZero(res == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(true);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SET_r8(Register r, int bit) {
+        switch(cycle) {
+            case 3 -> {
+                int res = data | (1 << bit);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SET__HL_(int bit) {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int res = data | (1 << bit);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RES_r8(Register r, int bit) {
+        switch(cycle) {
+            case 3 -> {
+                int res = data & ~(1 << bit);
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void RES__HL_(int bit) {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int res = data & ~(1 << bit);
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SWAP_r8(Register r, int bit) {
+        switch(cycle) {
+            case 3 -> {
+                int hi = r.getValue() >> 4;
+                int lo = r.getValue() & 0x0F;
+                int res = (lo << 4) | hi;
+                r.setValue(res);
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
+    }
+
+    private void SWAP__HL_(int bit) {
+        switch(cycle) {
+            case 3 -> {
+                data = read(reg.getHLValue());
+            }
+            case 4 -> {
+                int hi = data >> 4;
+                int lo = data & 0x0F;
+                int res = (lo << 4) | hi;
+                write(reg.getHLValue(), res);
+            }
+            case 5 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
     }
 
     // Helpers
