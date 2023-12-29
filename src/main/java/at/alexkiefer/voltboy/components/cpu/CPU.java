@@ -18,6 +18,9 @@ public class CPU extends ConnectedInternal implements Tickable {
     private final Registers reg;
 
     private boolean ime;
+    private int imeScheduleCount;
+    private boolean halt;
+    private boolean haltBug;
 
     private int cycle;
 
@@ -29,6 +32,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private final Instruction[] instr;
     private final Instruction[] cbInstr;
+    private final Instruction[] isrInstr;
     private Instruction currInstr;
 
     private final BufferedWriter bw;
@@ -45,7 +49,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
         reg = new Registers();
 
-        ime = true;
+        ime = false;
+        imeScheduleCount = 0;
+        halt = false;
+        haltBug = false;
 
         cycle = 1;
 
@@ -57,6 +64,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
         instr = new Instruction[0x100];
         cbInstr = new Instruction[0x100];
+        isrInstr = new Instruction[0x05];
 
         initInstructions();
 
@@ -65,11 +73,22 @@ public class CPU extends ConnectedInternal implements Tickable {
     @Override
     public void tick() {
 
+        if(halt) {
+            handleInterrupts();
+            return;
+        }
+
+        if(imeScheduleCount > 0) {
+            imeScheduleCount--;
+            if(imeScheduleCount == 0) {
+                ime = true;
+            }
+        }
+
         if(cycle == 1) {
-
             currInstr = prefixed ? cbInstr[opCode] : instr[opCode];
+            handleInterrupts();
             prefixed = false;
-
         }
 
         cycle++;
@@ -101,6 +120,37 @@ public class CPU extends ConnectedInternal implements Tickable {
         reg.PC.dec();
         //debugLog();
         reg.PC.inc();
+    }
+
+    private void handleInterrupts() {
+
+        int interrupts = read(0xFFFF) & read(0xFF0F) & 0x1F;
+
+        if(halt && (interrupts != 0)) {
+            halt = false;
+        }
+
+        if(ime && !prefixed) {
+
+            if((interrupts & BitUtils.M_ZERO) != 0) {
+                currInstr = isrInstr[0x00];
+                write(0xFF0F, interrupts & ~BitUtils.M_ZERO);
+            } else if((interrupts & BitUtils.M_ONE) != 0) {
+                currInstr = isrInstr[0x01];
+                write(0xFF0F, interrupts & ~BitUtils.M_ONE);
+            } else if((interrupts & BitUtils.M_TWO) != 0) {
+                currInstr = isrInstr[0x02];
+                write(0xFF0F, interrupts & ~BitUtils.M_TWO);
+            } else if((interrupts & BitUtils.M_THREE) != 0) {
+                currInstr = isrInstr[0x03];
+                write(0xFF0F, interrupts & ~BitUtils.M_THREE);
+            } else if((interrupts & BitUtils.M_FOUR) != 0) {
+                currInstr = isrInstr[0x04];
+                write(0xFF0F, interrupts & ~BitUtils.M_FOUR);
+            }
+
+        }
+
     }
 
     private void initInstructions() {
@@ -620,6 +670,12 @@ public class CPU extends ConnectedInternal implements Tickable {
         cbInstr[0xFD] = new Instruction(() -> SET_r8(reg.L, 7));
         cbInstr[0xFE] = new Instruction(() -> SET__HL_(7));
         cbInstr[0xFF] = new Instruction(() -> SET_r8(reg.A, 7));
+
+        isrInstr[0x00] = new Instruction(() -> ISR(0x40));
+        isrInstr[0x01] = new Instruction(() -> ISR(0x48));
+        isrInstr[0x02] = new Instruction(() -> ISR(0x50));
+        isrInstr[0x03] = new Instruction(() -> ISR(0x58));
+        isrInstr[0x04] = new Instruction(() -> ISR(0x60));
 
     }
 
@@ -1958,9 +2014,11 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
             case 4 -> {
                 // BUS IDLE
+                ime = true;
                 reg.PC.setValue(addr);
             }
             case 5 -> {
+
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2001,7 +2059,9 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void EI() {
         switch(cycle) {
             case 2 -> {
-                ime = true;
+                if(!ime && imeScheduleCount == 0) {
+                    imeScheduleCount = 2;
+                }
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2011,6 +2071,7 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void DI() {
         switch(cycle) {
             case 2 -> {
+                ime = false;
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2020,6 +2081,16 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void HALT() {
         switch(cycle) {
             case 2 -> {
+                if(ime) {
+                    halt = true;
+                } else {
+                    int interrupts = read(0xFFFF) & read(0xFF0F) & 0x1F;
+                    if(interrupts == 0) {
+                        halt = true;
+                    } else {
+                        haltBug = true;
+                    }
+                }
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2039,6 +2110,27 @@ public class CPU extends ConnectedInternal implements Tickable {
         switch(cycle) {
             case 2 -> {
                 cbFetch();
+            }
+        }
+    }
+
+    private void ISR(int vec) {
+        switch(cycle) {
+            case 2 -> {
+                reg.PC.dec();
+            }
+            case 3 -> {
+                reg.SP.dec();
+            }
+            case 4 -> {
+                write(reg.SP.getAndDec(), reg.PC.getValue() >> 8);
+            }
+            case 5 -> {
+                write(reg.SP.getValue(), reg.PC.getValue() & 0xFF);
+            }
+            case 6 -> {
+                reg.PC.setValue(vec);
+                fetch();
             }
         }
     }

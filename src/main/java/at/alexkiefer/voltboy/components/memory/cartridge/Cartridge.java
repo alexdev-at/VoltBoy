@@ -2,6 +2,7 @@ package at.alexkiefer.voltboy.components.memory.cartridge;
 
 import at.alexkiefer.voltboy.ConnectedInternal;
 import at.alexkiefer.voltboy.VoltBoy;
+import at.alexkiefer.voltboy.components.memory.cartridge.mbcs.MBC;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,7 +10,9 @@ import java.nio.file.Path;
 
 public class Cartridge extends ConnectedInternal {
 
+    private HeaderData data;
     private final int[] mem;
+    private final MBC mbc;
 
     public Cartridge(VoltBoy gb, String path) {
 
@@ -27,14 +30,25 @@ public class Cartridge extends ConnectedInternal {
             throw new RuntimeException(e);
         }
 
+        data = new HeaderData(mem);
+        mbc = MBC.fromData(gb, data);
+
     }
 
     public int read(int addr) {
-        return mem[addr & 0xFFFF];
+        return mem[mbc.resolveAddress(addr)];
     }
 
     public void write(int addr, int data) {
-        mem[addr & 0xFFFF] = data & 0xFF;
+        mbc.writeRegister(addr, data);
+    }
+
+    public int readRam(int addr) {
+        return mbc.readRam(addr);
+    }
+
+    public void writeRam(int addr, int data) {
+        mbc.writeRam(addr, data);
     }
 
 }

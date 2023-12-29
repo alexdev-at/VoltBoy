@@ -1,6 +1,7 @@
 package at.alexkiefer.voltboy.components.memory.spaces;
 
 import at.alexkiefer.voltboy.VoltBoy;
+import at.alexkiefer.voltboy.components.memory.AddressSpace;
 
 public class OamRam extends AddressSpace {
 
