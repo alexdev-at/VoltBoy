@@ -1,4 +1,4 @@
-package at.alexkiefer.voltboy.components.memory;
+package at.alexkiefer.voltboy.components.memory.spaces;
 
 import at.alexkiefer.voltboy.ConnectedInternal;
 import at.alexkiefer.voltboy.VoltBoy;
@@ -11,6 +11,7 @@ public class AddressSpace extends ConnectedInternal {
     private final int end;
     private final int size;
     private final boolean readOnly;
+    private String last = "";
 
     private final int[] mem;
 
@@ -42,12 +43,22 @@ public class AddressSpace extends ConnectedInternal {
     }
 
     public int read(int addr) {
+        if(addr == 0xFF44) {
+            return 0x90;
+        }
         return mem[(addr & 0xFFFF) - start];
     }
 
     public void write(int addr, int data) {
         if(!readOnly) {
             mem[(addr & 0xFFFF) - start] = data & 0xFF;
+        }
+        if(addr == 0xFF01) {
+            System.out.print((char) data);
+            last += (char) data;
+            if(last.endsWith("Passed") || last.endsWith("Failed")) {
+                System.exit(0);
+            }
         }
     }
 

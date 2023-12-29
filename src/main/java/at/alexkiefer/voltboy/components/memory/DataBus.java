@@ -2,6 +2,7 @@ package at.alexkiefer.voltboy.components.memory;
 
 import at.alexkiefer.voltboy.ConnectedInternal;
 import at.alexkiefer.voltboy.VoltBoy;
+import at.alexkiefer.voltboy.components.memory.spaces.*;
 import at.alexkiefer.voltboy.util.BitUtils;
 
 import java.util.ArrayList;

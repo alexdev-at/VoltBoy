@@ -8,6 +8,9 @@ import at.alexkiefer.voltboy.components.cpu.registers.Register;
 import at.alexkiefer.voltboy.components.cpu.registers.Registers;
 import at.alexkiefer.voltboy.util.BitUtils;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Arrays;
 
 public class CPU extends ConnectedInternal implements Tickable {
@@ -28,9 +31,17 @@ public class CPU extends ConnectedInternal implements Tickable {
     private final Instruction[] cbInstr;
     private Instruction currInstr;
 
+    private final BufferedWriter bw;
+
     public CPU(VoltBoy gb) {
 
         super(gb);
+
+        try {
+            bw = new BufferedWriter(new FileWriter("log.txt"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         reg = new Registers();
 
@@ -39,7 +50,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         cycle = 1;
 
         prefixed = false;
-        opCode = 0x00;
+        fetch();
 
         data = 0x00;
         addr = 0x00;
@@ -78,11 +89,18 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void fetch() {
         cycle = 1;
         opCode = read(reg.PC.getAndInc());
+        if(opCode != 0xCB) {
+            //debugLog();
+        }
     }
 
     private void cbFetch() {
         prefixed = true;
+        cycle = 1;
         opCode = read(reg.PC.getAndInc());
+        reg.PC.dec();
+        //debugLog();
+        reg.PC.inc();
     }
 
     private void initInstructions() {
@@ -676,6 +694,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 data = read((hi.getValue() << 8) | lo.getValue());
             }
             case 3 -> {
+                reg.A.setValue(data);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -700,12 +719,13 @@ public class CPU extends ConnectedInternal implements Tickable {
                 addr = read(reg.PC.getAndInc());
             }
             case 3 -> {
-                addr |= read(reg.PC.getAndInc() << 8);
+                addr |= read(reg.PC.getAndInc()) << 8;
             }
             case 4 -> {
                 data = read(addr);
             }
             case 5 -> {
+                reg.A.setValue(data);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -718,7 +738,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 addr = read(reg.PC.getAndInc());
             }
             case 3 -> {
-                addr |= read(reg.PC.getAndInc() << 8);
+                addr |= read(reg.PC.getAndInc()) << 8;
             }
             case 4 -> {
                 write(addr, reg.A.getValue());
@@ -777,7 +797,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 addr = read(reg.PC.getAndInc());
             }
             case 3 -> {
-                write(0xFF00 | reg.C.getValue(), addr);
+                write(0xFF00 | addr, reg.A.getValue());
             }
             case 4 -> {
                 fetch();
@@ -884,10 +904,10 @@ public class CPU extends ConnectedInternal implements Tickable {
                 addr |= read(reg.PC.getAndInc()) << 8;
             }
             case 4 -> {
-                write(addr++, reg.SP.getValue() >> 8);
+                write(addr++, reg.SP.getValue() & 0xFF);
             }
             case 5 -> {
-                write(addr, reg.SP.getValue() & 0xFF);
+                write(addr, reg.SP.getValue() >> 8);
             }
             case 6 -> {
                 fetch();
@@ -919,7 +939,6 @@ public class CPU extends ConnectedInternal implements Tickable {
                 write(reg.SP.getAndDec(), hi.getValue());
             }
             case 4 -> {
-                reg.SP.dec();
                 write(reg.SP.getValue(), lo.getValue());
             }
             case 5 -> {
@@ -1248,14 +1267,14 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void INC_r8(Register r) {
         switch(cycle) {
             case 2 -> {
-                int a = reg.A.getValue();
+                int a = r.getValue();
                 int b = 1;
                 int c = 0;
                 int res = a + b;
                 reg.F.setZero((res & 0xFF) == 0);
                 reg.F.setSubtraction(false);
                 reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
-                reg.A.setValue(res);
+                r.setValue(res);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -1268,7 +1287,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 data = read(reg.getHLValue());
             }
             case 3 -> {
-                int a = reg.A.getValue();
+                int a = data;
                 int b = 1;
                 int c = 0;
                 int res = a + b;
@@ -1287,14 +1306,14 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void DEC_r8(Register r) {
         switch(cycle) {
             case 2 -> {
-                int a = reg.A.getValue();
+                int a = r.getValue();
                 int b = 1;
                 int c = 0;
                 int res = a - b;
                 reg.F.setZero((res & 0xFF) == 0);
                 reg.F.setSubtraction(true);
                 reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
-                reg.A.setValue(res);
+                r.setValue(res);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -1307,7 +1326,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 data = read(reg.getHLValue());
             }
             case 3 -> {
-                int a = reg.A.getValue();
+                int a = data;
                 int b = 1;
                 int c = 0;
                 int res = a - b;
@@ -1623,7 +1642,6 @@ public class CPU extends ConnectedInternal implements Tickable {
                 int b = lo.getValue();
                 int c = 0;
                 int res = a + b;
-                reg.F.setZero((res & 0xFF) == 0);
                 reg.F.setSubtraction(false);
                 reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
                 reg.F.setCarry(res > 0xFF);
@@ -1634,11 +1652,10 @@ public class CPU extends ConnectedInternal implements Tickable {
                 int b = hi.getValue();
                 int c = reg.F.isCarry() ? 1 : 0;
                 int res = a + b + c;
-                reg.F.setZero((res & 0xFF) == 0);
                 reg.F.setSubtraction(false);
                 reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
                 reg.F.setCarry(res > 0xFF);
-                reg.A.setValue(res);
+                reg.H.setValue(res);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -1649,10 +1666,9 @@ public class CPU extends ConnectedInternal implements Tickable {
         switch(cycle) {
             case 2 -> {
                 int a = reg.L.getValue();
-                int b = reg.SP.getValue() >> 8;
+                int b = reg.SP.getValue() & 0xFF;
                 int c = 0;
                 int res = a + b;
-                reg.F.setZero((res & 0xFF) == 0);
                 reg.F.setSubtraction(false);
                 reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
                 reg.F.setCarry(res > 0xFF);
@@ -1660,14 +1676,13 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
             case 3 -> {
                 int a = reg.H.getValue();
-                int b = reg.SP.getValue() & 0xFF;
+                int b = reg.SP.getValue() >> 8;
                 int c = reg.F.isCarry() ? 1 : 0;
                 int res = a + b + c;
-                reg.F.setZero((res & 0xFF) == 0);
                 reg.F.setSubtraction(false);
                 reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
                 reg.F.setCarry(res > 0xFF);
-                reg.A.setValue(res);
+                reg.H.setValue(res);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -1687,8 +1702,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setZero(false);
                 reg.F.setSubtraction(false);
                 reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
-                // TODO: Verify
-                reg.F.setCarry(res > 0xFF || res < 0x00);
+                reg.F.setCarry((reg.SP.getValue() & 0xFF) + data > 0xFF);
                 if(res > 0xFF) {
                     // Here we use addr instead of creating an extra variable, because we need to know if we have to subtract or add 1
                     addr = 1;
@@ -1722,8 +1736,8 @@ public class CPU extends ConnectedInternal implements Tickable {
                 int res = a + b;
                 reg.F.setZero(false);
                 reg.F.setSubtraction(false);
-                reg.F.setHalfCarry(halfCarryEight(a, b, c, res));
-                reg.F.setCarry(res > 0xFF);
+                reg.F.setHalfCarry(halfCarryEight(a, data, c, res));
+                reg.F.setCarry((reg.SP.getValue() & 0xFF) + data > 0xFF);
                 if(res > 0xFF) {
                     addr = 1;
                 } else if(res < 0x00) {
@@ -1748,16 +1762,16 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void JP_u16() {
         switch(cycle) {
             case 2 -> {
-                data = read(reg.PC.getAndInc());
+                addr = read(reg.PC.getAndInc());
             }
             case 3 -> {
-                data |= read(reg.PC.getAndInc()) << 8;
+                addr |= read(reg.PC.getAndInc()) << 8;
             }
             case 4 -> {
                 // IDLE
             }
             case 5 -> {
-                reg.PC.setValue(data);
+                reg.PC.setValue(addr);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -1806,7 +1820,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 // IDLE, or more specifically some ALU IDU magic, explained in https://gist.github.com/SonoSooS/c0055300670d678b5ae8433e20bea595#jr-e8 -> Not necessary to emulate in this detail
             }
             case 4 -> {
-                reg.PC.setValue(reg.PC.getValue() + ((byte) data));
+                reg.PC.setValue(reg.PC.getValue() + (byte) data);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -1826,7 +1840,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 }
             }
             case 4 -> {
-                reg.PC.setValue(reg.PC.getValue() + ((byte) data));
+                reg.PC.setValue(reg.PC.getValue() + (byte) data);
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -1849,7 +1863,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 write(reg.SP.getAndDec(), reg.PC.getValue() >> 8);
             }
             case 6 -> {
-                reg.SP.dec();
+                write(reg.SP.getValue(), reg.PC.getValue() & 0xFF);
             }
             case 7 -> {
                 reg.PC.setValue(addr);
@@ -1879,7 +1893,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 write(reg.SP.getAndDec(), reg.PC.getValue() >> 8);
             }
             case 6 -> {
-                reg.SP.dec();
+                write(reg.SP.getValue(), reg.PC.getValue() & 0xFF);
             }
             case 7 -> {
                 reg.PC.setValue(addr);
@@ -1915,7 +1929,7 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
             case 3 -> {
                 if(cond) {
-                    addr |= read(reg.SP.getAndInc()) << 8;
+                    addr = read(reg.SP.getAndInc());
                 } else {
                     fetch();
                 }
@@ -1963,7 +1977,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 write(reg.SP.getAndDec(), reg.PC.getValue() >> 8);
             }
             case 4 -> {
-                reg.SP.dec();
+                write(reg.SP.getValue(), reg.PC.getValue() & 0xFF);
             }
             case 5 -> {
                 reg.PC.setValue(vec);
@@ -1985,19 +1999,40 @@ public class CPU extends ConnectedInternal implements Tickable {
     }
 
     private void EI() {
-        ime = true;
+        switch(cycle) {
+            case 2 -> {
+                ime = true;
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
     }
 
     private void DI() {
-        // TODO
+        switch(cycle) {
+            case 2 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
     }
 
     private void HALT() {
-        // TODO
+        switch(cycle) {
+            case 2 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
     }
 
     private void STOP() {
-        // TODO
+        switch(cycle) {
+            case 2 -> {
+                fetch();
+            }
+            default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
+        }
     }
 
     private void CB() {
@@ -2012,11 +2047,11 @@ public class CPU extends ConnectedInternal implements Tickable {
         throw new RuntimeException("Invalid instruction - Opcode " + BitUtils.toHex(opCode) + " is not supported!");
     }
 
-    // 8-Bit Bits - Start with cycle 3 since cycle 2 is the CB fetch
+    // 8-Bit Bits
 
     private void RLCA() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = reg.A.getValue();
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int res = ((val << 1) & 0xFF) | bit;
@@ -2033,7 +2068,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RLC_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = r.getValue();
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int res = ((val << 1) & 0xFF) | bit;
@@ -2050,10 +2085,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RLC__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int val = data;
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int res = ((val << 1) & 0xFF) | bit;
@@ -2063,7 +2098,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setCarry(bit != 0);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2072,7 +2107,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RRCA() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = reg.A.getValue();
                 int bit = val & BitUtils.M_ZERO;
                 int res = ((val >> 1) & 0xFF) | (bit << 7);
@@ -2089,7 +2124,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RRC_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = r.getValue();
                 int bit = val & BitUtils.M_ZERO;
                 int res = ((val >> 1) & 0xFF) | (bit << 7);
@@ -2106,10 +2141,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RRC__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int val = data;
                 int bit = val & BitUtils.M_ZERO;
                 int res = ((val >> 1) & 0xFF) | (bit << 7);
@@ -2119,7 +2154,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setCarry(bit != 0);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2128,7 +2163,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RLA() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = reg.A.getValue();
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int carry = reg.F.isCarry() ? 1 : 0;
@@ -2146,7 +2181,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RL_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = r.getValue();
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int carry = reg.F.isCarry() ? 1 : 0;
@@ -2164,10 +2199,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RL__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int val = data;
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int carry = reg.F.isCarry() ? 1 : 0;
@@ -2178,7 +2213,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setCarry(bit != 0);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2187,7 +2222,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RRA() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = reg.A.getValue();
                 int bit = val & BitUtils.M_ZERO;
                 int carry = reg.F.isCarry() ? 1 : 0;
@@ -2205,7 +2240,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RR_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = r.getValue();
                 int bit = val & BitUtils.M_ZERO;
                 int carry = reg.F.isCarry() ? 1 : 0;
@@ -2223,10 +2258,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RR__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int val = data;
                 int bit = val & BitUtils.M_ZERO;
                 int carry = reg.F.isCarry() ? 1 : 0;
@@ -2237,7 +2272,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setCarry(bit != 0);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2246,7 +2281,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SLA_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = r.getValue();
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int res = (val << 1) & 0xFF;
@@ -2263,10 +2298,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SLA__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int val = data;
                 int bit = (val & BitUtils.M_SEVEN) >> 7;
                 int res = (val << 1) & 0xFF;
@@ -2276,7 +2311,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setCarry(bit != 0);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2285,7 +2320,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SRA_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = r.getValue();
                 int bit = val & BitUtils.M_ZERO;
                 int last = (val & BitUtils.M_SEVEN) >> 7;
@@ -2303,10 +2338,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SRA__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int val = data;
                 int bit = val & BitUtils.M_ZERO;
                 int last = (val & BitUtils.M_SEVEN) >> 7;
@@ -2317,7 +2352,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setCarry(bit != 0);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2326,7 +2361,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SRL_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int val = r.getValue();
                 int bit = val & BitUtils.M_ZERO;
                 int res = ((val >> 1) & 0xFF);
@@ -2343,10 +2378,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SRL__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int val = data;
                 int bit = val & BitUtils.M_ZERO;
                 int res = ((val >> 1) & 0xFF);
@@ -2356,7 +2391,7 @@ public class CPU extends ConnectedInternal implements Tickable {
                 reg.F.setCarry(bit != 0);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2365,7 +2400,7 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void BIT_r8(Register r, int bit) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int res = r.getValue() & (1 << bit);
                 reg.F.setZero(res == 0);
                 reg.F.setSubtraction(false);
@@ -2378,10 +2413,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void BIT__HL_(int bit) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int res = data & (1 << bit);
                 reg.F.setZero(res == 0);
                 reg.F.setSubtraction(false);
@@ -2394,8 +2429,8 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SET_r8(Register r, int bit) {
         switch(cycle) {
-            case 3 -> {
-                int res = data | (1 << bit);
+            case 2 -> {
+                int res = r.getValue() | (1 << bit);
                 r.setValue(res);
                 fetch();
             }
@@ -2405,14 +2440,14 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SET__HL_(int bit) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int res = data | (1 << bit);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2421,8 +2456,8 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RES_r8(Register r, int bit) {
         switch(cycle) {
-            case 3 -> {
-                int res = data & ~(1 << bit);
+            case 2 -> {
+                int res = r.getValue() & ~(1 << bit);
                 r.setValue(res);
                 fetch();
             }
@@ -2432,14 +2467,14 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void RES__HL_(int bit) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int res = data & ~(1 << bit);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2448,10 +2483,14 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SWAP_r8(Register r) {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 int hi = r.getValue() >> 4;
                 int lo = r.getValue() & 0x0F;
                 int res = (lo << 4) | hi;
+                reg.F.setZero(res == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(false);
                 r.setValue(res);
                 fetch();
             }
@@ -2461,16 +2500,20 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void SWAP__HL_() {
         switch(cycle) {
-            case 3 -> {
+            case 2 -> {
                 data = read(reg.getHLValue());
             }
-            case 4 -> {
+            case 3 -> {
                 int hi = data >> 4;
                 int lo = data & 0x0F;
                 int res = (lo << 4) | hi;
+                reg.F.setZero(res == 0);
+                reg.F.setSubtraction(false);
+                reg.F.setHalfCarry(false);
+                reg.F.setCarry(false);
                 write(reg.getHLValue(), res);
             }
-            case 5 -> {
+            case 4 -> {
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
@@ -2481,6 +2524,15 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private boolean halfCarryEight(int a, int b, int c, int res) {
         return ((a ^ b ^ c ^ res) & 0x10) != 0;
+    }
+
+    private void debugLog() {
+        try {
+            bw.write("A: " + BitUtils.toHex(reg.A.getValue()) + " F: " + BitUtils.toHex(reg.F.getValue()) + " B: " + BitUtils.toHex(reg.B.getValue()) + " C: " + BitUtils.toHex(reg.C.getValue()) + " D: " + BitUtils.toHex(reg.D.getValue()) + " E: " + BitUtils.toHex(reg.E.getValue()) + " H: " + BitUtils.toHex(reg.H.getValue()) + " L: " + BitUtils.toHex(reg.L.getValue()) + " SP: " + BitUtils.toHex(reg.SP.getValue()) + " PC: 00:" + BitUtils.toHex(reg.PC.getValue() - 1) + " (" + BitUtils.toHex(read(reg.PC.getValue() - 1)) + " " + BitUtils.toHex(read(reg.PC.getValue())) + " " + BitUtils.toHex(read(reg.PC.getValue() + 1)) + " " + BitUtils.toHex(read(reg.PC.getValue() + 2)) + ")\n");
+            bw.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

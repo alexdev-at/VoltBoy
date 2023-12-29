@@ -1,4 +1,4 @@
-package at.alexkiefer.voltboy.components.memory;
+package at.alexkiefer.voltboy.components.memory.spaces;
 
 import at.alexkiefer.voltboy.VoltBoy;
 

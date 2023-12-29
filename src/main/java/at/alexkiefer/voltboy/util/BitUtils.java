@@ -16,7 +16,7 @@ public class BitUtils {
         if(ret.length() == 1 || ret.length() == 3) {
             ret = "0" + ret;
         }
-        return "0x" + ret;
+        return ret;
     }
 
 }

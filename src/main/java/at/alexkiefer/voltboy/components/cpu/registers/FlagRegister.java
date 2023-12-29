@@ -10,8 +10,8 @@ public class FlagRegister extends Register {
 
     @Override
     public void setValue(int value) {
-        super.setValue(value);
         value &= 0b11110000;
+        super.setValue(value);
     }
 
     public boolean isZero() {
