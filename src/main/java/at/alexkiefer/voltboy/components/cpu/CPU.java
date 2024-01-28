@@ -86,6 +86,10 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
 
         if(cycle == 1) {
+            if(haltBug) {
+                haltBug = false;
+                reg.PC.dec();
+            }
             currInstr = prefixed ? cbInstr[opCode] : instr[opCode];
             handleInterrupts();
             prefixed = false;
