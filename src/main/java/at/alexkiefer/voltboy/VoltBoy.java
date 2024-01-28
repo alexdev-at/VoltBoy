@@ -3,20 +3,23 @@ package at.alexkiefer.voltboy;
 import at.alexkiefer.voltboy.components.cpu.CPU;
 import at.alexkiefer.voltboy.components.memory.DataBus;
 import at.alexkiefer.voltboy.components.memory.cartridge.Cartridge;
+import at.alexkiefer.voltboy.components.ppu.PPU;
 import at.alexkiefer.voltboy.components.timer.Timer;
 
 public class VoltBoy {
 
     private final CPU cpu;
+    private final PPU ppu;
     private final DataBus dataBus;
     private final Cartridge cart;
     private final Timer timer;
 
     public VoltBoy() {
-        cart = new Cartridge(this, "C:\\Users\\Alex\\IdeaProjects\\VoltBoy\\testroms\\blargg\\cpu_instrs\\individual\\03-op sp,hl.gb");
+        cart = new Cartridge(this, "C:\\Users\\Alex\\IdeaProjects\\VoltBoy\\testroms\\blargg\\halt_bug.gb");
         dataBus = new DataBus(this);
         cpu = new CPU(this);
         timer = new Timer(this);
+        ppu = new PPU(this);
     }
 
     public void run() {
@@ -28,6 +31,10 @@ public class VoltBoy {
 
     public CPU getCpu() {
         return cpu;
+    }
+
+    public PPU getPpu() {
+        return ppu;
     }
 
     public DataBus getDataBus() {
