@@ -137,18 +137,23 @@ public class CPU extends ConnectedInternal implements Tickable {
         if(ime && !prefixed) {
 
             if((interrupts & BitUtils.M_ZERO) != 0) {
+                ime = false;
                 currInstr = isrInstr[0x00];
                 write(0xFF0F, interrupts & ~BitUtils.M_ZERO);
             } else if((interrupts & BitUtils.M_ONE) != 0) {
+                ime = false;
                 currInstr = isrInstr[0x01];
                 write(0xFF0F, interrupts & ~BitUtils.M_ONE);
             } else if((interrupts & BitUtils.M_TWO) != 0) {
+                ime = false;
                 currInstr = isrInstr[0x02];
                 write(0xFF0F, interrupts & ~BitUtils.M_TWO);
             } else if((interrupts & BitUtils.M_THREE) != 0) {
+                ime = false;
                 currInstr = isrInstr[0x03];
                 write(0xFF0F, interrupts & ~BitUtils.M_THREE);
             } else if((interrupts & BitUtils.M_FOUR) != 0) {
+                ime = false;
                 currInstr = isrInstr[0x04];
                 write(0xFF0F, interrupts & ~BitUtils.M_FOUR);
             }
