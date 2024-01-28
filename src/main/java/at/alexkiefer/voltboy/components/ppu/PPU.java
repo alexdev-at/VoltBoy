@@ -6,11 +6,8 @@ import at.alexkiefer.voltboy.VoltBoy;
 
 public class PPU extends ConnectedInternal implements Tickable {
 
-    private final int[][] lcdPixels;
-
     public PPU(VoltBoy gb) {
         super(gb);
-        lcdPixels = new int[160][144];
     }
 
     @Override
