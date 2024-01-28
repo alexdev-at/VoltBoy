@@ -2018,11 +2018,12 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
             case 4 -> {
                 // BUS IDLE
-                ime = true;
+                if(!ime && imeScheduleCount == 0) {
+                    imeScheduleCount = 2;
+                }
                 reg.PC.setValue(addr);
             }
             case 5 -> {
-
                 fetch();
             }
             default -> throw new RuntimeException("Opcode " + BitUtils.toHex(opCode) + " does not have a cycle #" + cycle + "!");
