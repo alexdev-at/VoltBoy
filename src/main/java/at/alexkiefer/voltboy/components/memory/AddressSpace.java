@@ -42,9 +42,9 @@ public class AddressSpace extends ConnectedInternal {
     }
 
     public int read(int addr) {
-        if(addr == 0xFF44) {
+        /*if(addr == 0xFF44) {
             return 0x90;
-        }
+        }*/
         return mem[(addr & 0xFFFF) - start];
     }
 

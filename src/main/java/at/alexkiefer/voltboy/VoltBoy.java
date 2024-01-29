@@ -15,7 +15,7 @@ public class VoltBoy {
     private final Timer timer;
 
     public VoltBoy() {
-        cart = new Cartridge(this, "C:\\Users\\Alex\\IdeaProjects\\VoltBoy\\testroms\\blargg\\cpu_instrs\\cpu_instrs.gb");
+        cart = new Cartridge(this, "D:\\GBGames\\gb-draw\\build\\gb-draw.gb");
         dataBus = new DataBus(this);
         cpu = new CPU(this);
         timer = new Timer(this);
@@ -26,7 +26,14 @@ public class VoltBoy {
         while(true) {
             timer.tick();
             cpu.tick();
+            ppu.tick();
         }
+    }
+
+    public void tick() {
+        timer.tick();
+        cpu.tick();
+        ppu.tick();
     }
 
     public CPU getCpu() {
