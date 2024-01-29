@@ -89,7 +89,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         if(dot == 0) {
             backgroundPixelFifo.clear();
-            getBackgroundPixelFetcher().reset();
+            backgroundPixelFetcher.reset();
             oamBuffer.clear();
             lx = 0;
         }
@@ -154,9 +154,6 @@ public class PPU extends ConnectedInternal implements Tickable {
     }
 
     private void render() {
-
-        System.out.println("Pixel FIFO state before dot " + dot + ":");
-        backgroundPixelFifo.print();
 
         int ly = gb.getDataBus().read(0xFF44);
 
