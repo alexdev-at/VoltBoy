@@ -50,6 +50,7 @@ public class Main {
                     case 0b11 -> g.setColor(Color.BLACK);
                 }
                 g.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
+                g.fillRect(0, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
             }
         }
     }

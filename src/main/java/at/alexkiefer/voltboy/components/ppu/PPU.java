@@ -101,6 +101,8 @@ public class PPU extends ConnectedInternal implements Tickable {
             case MODE_1 -> vBlank();
         }
 
+        //System.out.println(mode.toString());
+
         dot++;
 
         int ly = gb.getDataBus().read(0xFF44);
@@ -116,8 +118,10 @@ public class PPU extends ConnectedInternal implements Tickable {
         } else {
 
             if(dot == 80) {
+                lx = 0;
                 mode = PPUMode.MODE_3;
-            } else if(dot == 252) {
+            } else if(lx == 160) {
+                lx = 0;
                 mode = PPUMode.MODE_0;
             } else if(dot == 456) {
                 dot = 0;
@@ -161,7 +165,13 @@ public class PPU extends ConnectedInternal implements Tickable {
             lcd[ly][lx++] = backgroundPixelFifo.pop();
         }
 
-        backgroundPixelFetcher.tick();
+        // Should still be okay because nothing can cause a delay yet
+        if(dot % 2 == 0) {
+            backgroundPixelFetcher.tick();
+        }
+
+        //System.out.println("FIFO after dot #" + dot);
+        //backgroundPixelFifo.print();
 
     }
 
