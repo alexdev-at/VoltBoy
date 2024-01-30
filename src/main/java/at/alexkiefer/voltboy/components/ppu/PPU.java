@@ -91,7 +91,6 @@ public class PPU extends ConnectedInternal implements Tickable {
             backgroundPixelFifo.clear();
             backgroundPixelFetcher.reset();
             oamBuffer.clear();
-            lx = 0;
         }
 
         switch(mode) {

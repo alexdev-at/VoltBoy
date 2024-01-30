@@ -66,7 +66,7 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
         // TODO: Scrolling
         int tileMapArea = (gb.getDataBus().read(0xFF40) & BitUtils.M_THREE) == 0 ? 0x9800 : 0x9C00;
         int ly = gb.getDataBus().read(0xFF44);
-        fetcherY = ly / 8;
+        fetcherY = 32 * (ly / 8);
         tileNumber = gb.getDataBus().read(tileMapArea + fetcherX + fetcherY);
 
     }
