@@ -17,7 +17,6 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
     private int tileData;
 
     private boolean firstFetch;
-    private boolean skip;
 
     public PixelFetcher(VoltBoy gb) {
 
@@ -29,13 +28,11 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
 
     public void reset() {
         fetcherX = 0;
-        fetcherY = 0;
         step = 1;
         tileNumber = 0;
         tileDataAddr = 0;
         tileData = 0;
         firstFetch = true;
-        skip = false;
     }
 
     public int getFetcherX() {
@@ -49,22 +46,16 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
     @Override
     public void tick() {
 
-        if(skip) {
-            skip = false;
-            return;
-        }
-
         switch(step) {
             case 1 -> fetchTileNumber();
             case 2 -> fetchTileDataLow();
             case 3 -> fetchTileDataHigh();
-            // case 4 -> sleep
-            case 5 -> convertAndPush();
+            case 4 -> convertAndPush();
         }
 
         step++;
 
-        if(step == 6) {
+        if(step == 5) {
             step = 1;
         }
 
@@ -77,8 +68,6 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
         int ly = gb.getDataBus().read(0xFF44);
         fetcherY = ly;
         tileNumber = gb.getDataBus().read(tileMapArea + fetcherX + fetcherY);
-
-        skip = true;
 
     }
 
@@ -93,8 +82,6 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
         tileDataAddr = tileDataArea + offset + ((signed ? (byte) tileNumber : tileNumber) * 16);
         tileData = gb.getDataBus().read(tileDataAddr++);
 
-        skip = true;
-
     }
 
     private void fetchTileDataHigh() {
@@ -105,8 +92,6 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
             firstFetch = false;
             step = 0;
         }
-
-        skip = false;
 
     }
 
@@ -130,8 +115,6 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
         }
 
         fetcherX = (fetcherX + 1) & 0x1F;
-
-        skip = true;
 
     }
 
