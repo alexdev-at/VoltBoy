@@ -127,6 +127,7 @@ public class PPU extends ConnectedInternal implements Tickable {
                 mode = PPUMode.MODE_2;
                 if(ly == 144) {
                     mode = PPUMode.MODE_1;
+                    gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ZERO);
                 }
                 gb.getDataBus().writeUnrestricted(0xFF44, ly % 154);
             }

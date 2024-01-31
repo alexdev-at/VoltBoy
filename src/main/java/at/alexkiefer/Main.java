@@ -19,14 +19,15 @@ public class Main {
         JFrame frame = new JFrame("Gameboy Emulator");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        frame.setSize(SCREEN_WIDTH * PIXEL_SCALE, SCREEN_HEIGHT * PIXEL_SCALE);
-
         JPanel panel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 drawGameboyScreen(g, gb);
             }
         };
+        panel.setSize(SCREEN_WIDTH * PIXEL_SCALE, SCREEN_HEIGHT * PIXEL_SCALE);
+
+        frame.setSize(panel.getSize());
 
         frame.getContentPane().add(panel);
 
