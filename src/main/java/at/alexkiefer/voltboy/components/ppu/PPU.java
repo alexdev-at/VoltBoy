@@ -164,7 +164,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
             dot = 0;
 
-            System.out.println("LCDC.0=" + (gb.getDataBus().read(0xFF40) & BitUtils.M_ZERO));
+            debugPrint();
 
             if(ly == gb.getDataBus().read(0xFF45)) {
                 gb.getDataBus().writeUnrestricted(0xFF41, stat | BitUtils.M_TWO);
@@ -240,7 +240,8 @@ public class PPU extends ConnectedInternal implements Tickable {
 
     private void debugPrint() {
         int lcdc = gb.getDataBus().read(0xFF40);
-        System.out.println("LCDC:");
+        int stat = gb.getDataBus().read(0xFF41);
+        System.out.println("LCDC: " + BitUtils.toBinary(lcdc) + " - STAT: " + BitUtils.toBinary(stat));
     }
 
 }

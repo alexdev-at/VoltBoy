@@ -19,4 +19,12 @@ public class BitUtils {
         return ret;
     }
 
+    public static String toBinary(int value) {
+        String ret = Integer.toBinaryString(value).toUpperCase();
+        for(int i = 0; i < (8 - ret.length()); i++) {
+            ret = "0" + ret;
+        }
+        return ret;
+    }
+
 }
