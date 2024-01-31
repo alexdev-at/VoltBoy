@@ -25,15 +25,15 @@ public class VoltBoy {
     public void run() {
         while(true) {
             timer.tick();
-            cpu.tick();
             ppu.tick();
+            cpu.tick();
         }
     }
 
     public void tick() {
         timer.tick();
-        cpu.tick();
         ppu.tick();
+        cpu.tick();
     }
 
     public CPU getCpu() {

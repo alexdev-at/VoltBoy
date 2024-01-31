@@ -74,8 +74,12 @@ public class CPU extends ConnectedInternal implements Tickable {
     public void tick() {
 
         if(halt) {
-            handleInterrupts();
-            return;
+            int interrupts = read(0xFFFF) & read(0xFF0F);
+            if(interrupts != 0) {
+                halt = false;
+            } else {
+                return;
+            }
         }
 
         if(imeScheduleCount > 0) {
@@ -99,6 +103,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
         currInstr.step();
 
+    }
+
+    public boolean isIme() {
+        return ime;
     }
 
     private int read(int addr) {
@@ -128,22 +136,19 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private void handleInterrupts() {
 
-        int interrupts = read(0xFFFF) & read(0xFF0F) & 0x1F;
-
-        if(halt && (interrupts != 0)) {
-            halt = false;
-        }
+        int interrupts = read(0xFFFF) & read(0xFF0F);
 
         if(ime && !prefixed) {
 
             if((interrupts & BitUtils.M_ZERO) != 0) {
                 ime = false;
                 currInstr = isrInstr[0x00];
+                //System.out.println("CPU: VBLANK serviced");
                 write(0xFF0F, interrupts & ~BitUtils.M_ZERO);
             } else if((interrupts & BitUtils.M_ONE) != 0) {
                 ime = false;
                 currInstr = isrInstr[0x01];
-                System.out.println("CPU: STAT serviced");
+                //System.out.println("CPU: STAT serviced");
                 write(0xFF0F, interrupts & ~BitUtils.M_ONE);
             } else if((interrupts & BitUtils.M_TWO) != 0) {
                 ime = false;
@@ -2024,7 +2029,7 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
             case 4 -> {
                 // BUS IDLE
-                if(!ime && imeScheduleCount == 0) {
+                if(imeScheduleCount == 0) {
                     imeScheduleCount = 2;
                 }
                 reg.PC.setValue(addr);
@@ -2070,7 +2075,7 @@ public class CPU extends ConnectedInternal implements Tickable {
     private void EI() {
         switch(cycle) {
             case 2 -> {
-                if(!ime && imeScheduleCount == 0) {
+                if(imeScheduleCount == 0) {
                     imeScheduleCount = 2;
                 }
                 fetch();

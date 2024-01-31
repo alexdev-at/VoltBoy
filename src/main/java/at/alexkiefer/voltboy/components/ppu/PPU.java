@@ -111,12 +111,8 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         ly++;
 
-        if(ly > 144) {
-
-            if(dot == 456) {
-
-            }
-
+        if(ly >= 144) {
+            mode = PPUMode.MODE_1;
         } else {
 
             if(dot == 80) {
@@ -125,18 +121,14 @@ public class PPU extends ConnectedInternal implements Tickable {
                 lx = 0;
                 mode = PPUMode.MODE_0;
             } else if(dot == 456) {
-                if(ly == 144) {
-                    mode = PPUMode.MODE_1;
-                } else {
-                    mode = PPUMode.MODE_2;
-                }
+                mode = PPUMode.MODE_2;
             }
 
         }
 
         if(mode != oldMode) {
 
-            stat |= mode.getValue();
+            stat = (stat & 0b11111100) | mode.getValue();
             gb.getDataBus().write(0xFF41, stat);
 
             switch(mode) {
@@ -160,20 +152,21 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         }
 
+        if(ly == gb.getDataBus().read(0xFF45)) {
+            gb.getDataBus().writeUnrestricted(0xFF41, stat | BitUtils.M_TWO);
+        } else {
+            gb.getDataBus().writeUnrestricted(0xFF41, stat & ~BitUtils.M_TWO);
+        }
+
         if(dot == 456) {
 
             dot = 0;
 
-            debugPrint();
-
-            if(ly == gb.getDataBus().read(0xFF45)) {
-                gb.getDataBus().writeUnrestricted(0xFF41, stat | BitUtils.M_TWO);
-                if((stat & BitUtils.M_SIX) != 0) {
-                    gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
-                }
-            } else {
-                gb.getDataBus().writeUnrestricted(0xFF41, stat & ~BitUtils.M_TWO);
+            if(ly == gb.getDataBus().read(0xFF45) && (stat & BitUtils.M_SIX) != 0) {
+                gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
             }
+
+            debugPrint();
 
             gb.getDataBus().writeUnrestricted(0xFF44, ly % 154);
 
@@ -241,7 +234,9 @@ public class PPU extends ConnectedInternal implements Tickable {
     private void debugPrint() {
         int lcdc = gb.getDataBus().read(0xFF40);
         int stat = gb.getDataBus().read(0xFF41);
-        System.out.println("LCDC: " + BitUtils.toBinary(lcdc) + " - STAT: " + BitUtils.toBinary(stat));
+        int ir = gb.getDataBus().read(0xFF0F);
+        int ie = gb.getDataBus().read(0xFFFF);
+        //System.out.println("LCDC: " + BitUtils.toBinary(lcdc) + " - STAT: " + BitUtils.toBinary(stat) + " - MODE: " + mode + " - IR: " + BitUtils.toBinary(ir) + " - IE: " + BitUtils.toBinary(ie) + " - IME: " + (gb.getCpu().isIme() ? "1" : "0"));
     }
 
 }
