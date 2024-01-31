@@ -15,7 +15,7 @@ public class VoltBoy {
     private final Timer timer;
 
     public VoltBoy() {
-        cart = new Cartridge(this, "C:\\Users\\alexk\\Downloads\\gb-test-roms-master\\gb-test-roms-master\\cpu_instrs\\cpu_instrs.gb");
+        cart = new Cartridge(this, "C:\\Users\\Alex\\IdeaProjects\\VoltBoy\\testroms\\dmg-acid2\\dmg-acid2.gb");
         dataBus = new DataBus(this);
         cpu = new CPU(this);
         timer = new Timer(this);

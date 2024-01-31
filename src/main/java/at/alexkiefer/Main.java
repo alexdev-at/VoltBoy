@@ -16,7 +16,7 @@ public class Main {
     public static void main(String[] args) {
         VoltBoy gb = new VoltBoy();
 
-        JFrame frame = new JFrame("Gameboy Emulator");
+        JFrame frame = new JFrame("VoltBoy");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         JPanel panel = new JPanel() {

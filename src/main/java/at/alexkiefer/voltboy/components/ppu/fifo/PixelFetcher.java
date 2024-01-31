@@ -35,12 +35,12 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
         firstFetch = true;
     }
 
-    public int getFetcherX() {
-        return fetcherX;
+    public void setFetcherX(int fetcherX) {
+        this.fetcherX = fetcherX;
     }
 
-    public int getFetcherY() {
-        return fetcherY;
+    public int getFetcherX() {
+        return fetcherX;
     }
 
     @Override

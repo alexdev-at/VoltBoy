@@ -143,6 +143,7 @@ public class CPU extends ConnectedInternal implements Tickable {
             } else if((interrupts & BitUtils.M_ONE) != 0) {
                 ime = false;
                 currInstr = isrInstr[0x01];
+                System.out.println("CPU: STAT serviced");
                 write(0xFF0F, interrupts & ~BitUtils.M_ONE);
             } else if((interrupts & BitUtils.M_TWO) != 0) {
                 ime = false;
