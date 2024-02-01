@@ -11,7 +11,6 @@ import at.alexkiefer.voltboy.components.ppu.objects.OAMObjectAttributes;
 import at.alexkiefer.voltboy.util.BitUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class PPU extends ConnectedInternal implements Tickable {
@@ -89,6 +88,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         if(dot == 0) {
             backgroundPixelFifo.clear();
+            backgroundPixelFifo.discardPixels(gb.getDataBus().read(0xFF43) % 8);
             backgroundPixelFetcher.reset();
             oamBuffer.clear();
         }
@@ -203,7 +203,9 @@ public class PPU extends ConnectedInternal implements Tickable {
         if(backgroundPixelFifo.getSize() > 0) {
             Pixel p = backgroundPixelFifo.pop();
             if((gb.getDataBus().read(0xFF40) & BitUtils.M_ZERO) != 0) {
-                lcd[ly][lx++] = p;
+                if(p != null) {
+                    lcd[ly][lx++] = p;
+                }
             } else {
                 lcd[ly][lx++] = new Pixel(0, 0, 0);
             }

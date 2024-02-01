@@ -69,7 +69,9 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
         int scy = gb.getDataBus().read(0xFF42);
         int scx = gb.getDataBus().read(0xFF43);
         fetcherY = 32 * (((ly + scy) & 0xFF) / 8);
-        tileNumber = gb.getDataBus().read(tileMapArea + fetcherX + fetcherY);
+        int x = fetcherX + (scx / 8);
+        x &= 0x1F;
+        tileNumber = gb.getDataBus().read(tileMapArea + x + fetcherY);
 
     }
 
@@ -78,10 +80,8 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
         int tileDataArea = (gb.getDataBus().read(0xFF40) & BitUtils.M_FOUR) == 0 ? 0x9000 : 0x8000;
         boolean signed = tileDataArea == 0x9000;
 
-        // TODO: Scrolling
         int ly = gb.getDataBus().read(0xFF44);
         int scy = gb.getDataBus().read(0xFF42);
-        int scx = gb.getDataBus().read(0xFF43);
         int offset = 2 * ((ly + scy) % 8);
         tileDataAddr = tileDataArea + offset + ((signed ? (byte) tileNumber : tileNumber) * 16);
         tileData = gb.getDataBus().read(tileDataAddr++);

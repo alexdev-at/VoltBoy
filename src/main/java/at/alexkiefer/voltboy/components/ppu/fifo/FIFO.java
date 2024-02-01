@@ -9,15 +9,21 @@ public class FIFO extends ConnectedInternal {
 
     private final Pixel[] pixels;
     private int size;
+    private int discard;
 
     public FIFO(VoltBoy gb) {
         super(gb);
         pixels = new Pixel[8];
         size = 0;
+        discard = 0;
     }
 
     public int getSize() {
         return size;
+    }
+
+    public void discardPixels(int count) {
+        discard = count;
     }
 
     public void push(Pixel p) {
@@ -25,7 +31,13 @@ public class FIFO extends ConnectedInternal {
     }
 
     public Pixel pop() {
-        Pixel ret = pixels[0];
+        Pixel ret;
+        if(discard > 0) {
+            ret = null;
+            discard--;
+        } else {
+            ret = pixels[0];
+        }
         // Shift all pixels left once
         for(int i = 0; i < size - 1; i++) {
             pixels[i] = pixels[i + 1];

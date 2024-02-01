@@ -25,12 +25,11 @@ public class Main {
                 drawGameboyScreen(g, gb);
             }
         };
-        panel.setSize(SCREEN_WIDTH * PIXEL_SCALE, SCREEN_HEIGHT * PIXEL_SCALE);
-
-        frame.setSize(panel.getSize());
+        panel.setPreferredSize(new Dimension(SCREEN_WIDTH * PIXEL_SCALE, SCREEN_HEIGHT * PIXEL_SCALE));
 
         frame.getContentPane().add(panel);
 
+        frame.pack();  // Adjusts the frame size to fit the panel
         frame.setVisible(true);
         frame.setLocationRelativeTo(null);
 
