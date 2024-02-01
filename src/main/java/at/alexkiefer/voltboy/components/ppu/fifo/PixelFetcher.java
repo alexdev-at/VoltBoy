@@ -3,20 +3,19 @@ package at.alexkiefer.voltboy.components.ppu.fifo;
 import at.alexkiefer.voltboy.ConnectedInternal;
 import at.alexkiefer.voltboy.Tickable;
 import at.alexkiefer.voltboy.VoltBoy;
-import at.alexkiefer.voltboy.util.BitUtils;
 
-public class PixelFetcher extends ConnectedInternal implements Tickable {
+public abstract class PixelFetcher extends ConnectedInternal implements Tickable {
 
-    private int fetcherX;
-    private int fetcherY;
+    protected int fetcherX;
+    protected int fetcherY;
 
-    private int step;
+    protected int step;
 
-    private int tileNumber;
-    private int tileDataAddr;
-    private int tileData;
+    protected int tileNumber;
+    protected int tileDataAddr;
+    protected int tileData;
 
-    private boolean firstFetch;
+    protected boolean firstFetch;
 
     public PixelFetcher(VoltBoy gb) {
 
@@ -26,14 +25,7 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
 
     }
 
-    public void reset() {
-        fetcherX = 0;
-        step = 1;
-        tileNumber = 0;
-        tileDataAddr = 0;
-        tileData = 0;
-        firstFetch = true;
-    }
+    abstract void reset();
 
     public void setFetcherX(int fetcherX) {
         this.fetcherX = fetcherX;
@@ -44,83 +36,14 @@ public class PixelFetcher extends ConnectedInternal implements Tickable {
     }
 
     @Override
-    public void tick() {
+    public abstract void tick();
 
-        switch(step) {
-            case 1 -> fetchTileNumber();
-            case 2 -> fetchTileDataLow();
-            case 3 -> fetchTileDataHigh();
-            case 4 -> convertAndPush();
-        }
+    abstract void fetchTileNumber();
 
-        step++;
+    abstract void fetchTileDataLow();
 
-        if(step == 5) {
-            step = 1;
-        }
+    abstract void fetchTileDataHigh();
 
-    }
-
-    private void fetchTileNumber() {
-
-        // TODO: Scrolling
-        int tileMapArea = (gb.getDataBus().read(0xFF40) & BitUtils.M_THREE) == 0 ? 0x9800 : 0x9C00;
-        int ly = gb.getDataBus().read(0xFF44);
-        int scy = gb.getDataBus().read(0xFF42);
-        int scx = gb.getDataBus().read(0xFF43);
-        fetcherY = 32 * (((ly + scy) & 0xFF) / 8);
-        int x = fetcherX + (scx / 8);
-        x &= 0x1F;
-        tileNumber = gb.getDataBus().read(tileMapArea + x + fetcherY);
-
-    }
-
-    private void fetchTileDataLow() {
-
-        int tileDataArea = (gb.getDataBus().read(0xFF40) & BitUtils.M_FOUR) == 0 ? 0x9000 : 0x8000;
-        boolean signed = tileDataArea == 0x9000;
-
-        int ly = gb.getDataBus().read(0xFF44);
-        int scy = gb.getDataBus().read(0xFF42);
-        int offset = 2 * ((ly + scy) % 8);
-        tileDataAddr = tileDataArea + offset + ((signed ? (byte) tileNumber : tileNumber) * 16);
-        tileData = gb.getDataBus().read(tileDataAddr++);
-
-    }
-
-    private void fetchTileDataHigh() {
-
-        tileData |= gb.getDataBus().read(tileDataAddr) << 8;
-
-        if(firstFetch) {
-            firstFetch = false;
-            step = 0;
-        }
-
-    }
-
-    private void convertAndPush() {
-
-        FIFO fifo = gb.getPpu().getBackgroundPixelFifo();
-
-        if(fifo.getSize() > 0) {
-            step--;
-            return;
-        }
-
-        int lo = tileData & 0xFF;
-        int hi = tileData >> 8;
-
-        for(int i = 0; i < 8; i++) {
-            int loBit = (lo & (1 << (7 - i))) >> (7 - i);
-            int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
-            int color = (loBit | (hiBit << 1));
-            fifo.push(new Pixel(color, 0, 0));
-            //fifo.push(new Pixel(gb.getDataBus().read(0xFF44) % 2 == 0 ? 0 : 3, 0, 0));
-        }
-
-        fetcherX = (fetcherX + 1) & 0x1F;
-
-    }
+    abstract void convertAndPush();
 
 }

@@ -3,9 +3,7 @@ package at.alexkiefer.voltboy.components.ppu;
 import at.alexkiefer.voltboy.ConnectedInternal;
 import at.alexkiefer.voltboy.Tickable;
 import at.alexkiefer.voltboy.VoltBoy;
-import at.alexkiefer.voltboy.components.ppu.fifo.FIFO;
-import at.alexkiefer.voltboy.components.ppu.fifo.Pixel;
-import at.alexkiefer.voltboy.components.ppu.fifo.PixelFetcher;
+import at.alexkiefer.voltboy.components.ppu.fifo.*;
 import at.alexkiefer.voltboy.components.ppu.objects.OAMObject;
 import at.alexkiefer.voltboy.components.ppu.objects.OAMObjectAttributes;
 import at.alexkiefer.voltboy.util.BitUtils;
@@ -15,8 +13,10 @@ import java.util.List;
 
 public class PPU extends ConnectedInternal implements Tickable {
 
-    private final PixelFetcher backgroundPixelFetcher;
-    private final FIFO backgroundPixelFifo;
+    private final BackgroundPixelFetcher backgroundPixelFetcher;
+    private final ObjectPixelFetcher objectPixelFetcher;
+    private final BackgroundPixelFIFO backgroundPixelFifo;
+    private final ObjectPixelFIFO objectPixelFifo;
 
     private final Pixel[][] lcd;
 
@@ -29,12 +29,16 @@ public class PPU extends ConnectedInternal implements Tickable {
 
     private final List<OAMObject> oamBuffer;
 
+    private boolean objectFetch;
+
     public PPU(VoltBoy gb) {
 
         super(gb);
 
-        backgroundPixelFetcher = new PixelFetcher(gb);
-        backgroundPixelFifo = new FIFO(gb);
+        backgroundPixelFetcher = new BackgroundPixelFetcher(gb);
+        objectPixelFetcher = new ObjectPixelFetcher(gb);
+        backgroundPixelFifo = new BackgroundPixelFIFO(gb);
+        objectPixelFifo = new ObjectPixelFIFO(gb);
 
         lx = 0;
 
@@ -44,6 +48,8 @@ public class PPU extends ConnectedInternal implements Tickable {
         addr = 0x0000;
 
         oamBuffer =  new ArrayList<>();
+
+        objectFetch = false;
 
         lcd = new Pixel[144][160];
         for(int i = 0; i < 144; i++) {
@@ -58,11 +64,11 @@ public class PPU extends ConnectedInternal implements Tickable {
         return mode;
     }
 
-    public PixelFetcher getBackgroundPixelFetcher() {
+    public BackgroundPixelFetcher getBackgroundPixelFetcher() {
         return backgroundPixelFetcher;
     }
 
-    public FIFO getBackgroundPixelFifo() {
+    public BackgroundPixelFIFO getBackgroundPixelFifo() {
         return backgroundPixelFifo;
     }
 
@@ -90,6 +96,8 @@ public class PPU extends ConnectedInternal implements Tickable {
             backgroundPixelFifo.clear();
             backgroundPixelFifo.discardPixels(gb.getDataBus().read(0xFF43) % 8);
             backgroundPixelFetcher.reset();
+            objectPixelFifo.clear();
+            objectPixelFetcher.reset();
             oamBuffer.clear();
         }
 
@@ -112,6 +120,7 @@ public class PPU extends ConnectedInternal implements Tickable {
         ly++;
 
         if(ly >= 144) {
+            backgroundPixelFetcher.resetWindowCounter();
             mode = PPUMode.MODE_1;
         } else {
 
@@ -170,6 +179,10 @@ public class PPU extends ConnectedInternal implements Tickable {
 
             gb.getDataBus().writeUnrestricted(0xFF44, ly % 154);
 
+            if(backgroundPixelFetcher.isWindowMode()) {
+                backgroundPixelFetcher.incWindowCounter();
+            }
+
         }
 
 
@@ -199,16 +212,26 @@ public class PPU extends ConnectedInternal implements Tickable {
     private void render() {
 
         int ly = gb.getDataBus().read(0xFF44);
+        int lcdc = gb.getDataBus().read(0xFF40);
 
         if(backgroundPixelFifo.getSize() > 0) {
+
             Pixel p = backgroundPixelFifo.pop();
-            if((gb.getDataBus().read(0xFF40) & BitUtils.M_ZERO) != 0) {
+            if((lcdc & BitUtils.M_ZERO) != 0) {
                 if(p != null) {
                     lcd[ly][lx++] = p;
                 }
             } else {
                 lcd[ly][lx++] = new Pixel(0, 0, 0);
             }
+
+            if((lcdc & BitUtils.M_FIVE) != 0) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
+                    backgroundPixelFifo.clear();
+                    backgroundPixelFetcher.startWindowMode();
+                }
+            }
+
         }
 
         // Should still be okay because nothing can cause a delay yet
