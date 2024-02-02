@@ -29,8 +29,6 @@ public class PPU extends ConnectedInternal implements Tickable {
 
     private final List<OAMObject> oamBuffer;
 
-    private boolean objectFetch;
-
     public PPU(VoltBoy gb) {
 
         super(gb);
@@ -49,12 +47,10 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         oamBuffer =  new ArrayList<>();
 
-        objectFetch = false;
-
         lcd = new Pixel[144][160];
         for(int i = 0; i < 144; i++) {
             for(int j = 0; j < 160; j++) {
-                lcd[i][j] = new Pixel(0, 0, 0);
+                lcd[i][j] = new Pixel(5, 0, 0);
             }
         }
 
@@ -68,8 +64,16 @@ public class PPU extends ConnectedInternal implements Tickable {
         return backgroundPixelFetcher;
     }
 
+    public ObjectPixelFetcher getObjectPixelFetcher() {
+        return objectPixelFetcher;
+    }
+
     public BackgroundPixelFIFO getBackgroundPixelFifo() {
         return backgroundPixelFifo;
+    }
+
+    public ObjectPixelFIFO getObjectPixelFifo() {
+        return objectPixelFifo;
     }
 
     public Pixel[][] getLcd() {
@@ -99,6 +103,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             objectPixelFifo.clear();
             objectPixelFetcher.reset();
             oamBuffer.clear();
+            addr = 0xFE00;
         }
 
         switch(mode) {
@@ -119,7 +124,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         ly++;
 
-        if(ly >= 144) {
+        if(ly > 144) {
             backgroundPixelFetcher.resetWindowCounter();
             mode = PPUMode.MODE_1;
         } else {
@@ -175,8 +180,6 @@ public class PPU extends ConnectedInternal implements Tickable {
                 gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
             }
 
-            debugPrint();
-
             gb.getDataBus().writeUnrestricted(0xFF44, ly % 154);
 
             if(backgroundPixelFetcher.isWindowMode()) {
@@ -203,8 +206,8 @@ public class PPU extends ConnectedInternal implements Tickable {
         int ly = gb.getDataBus().read(0xFF44);
         int size = (gb.getDataBus().read(0xFF40) & BitUtils.M_TWO) == 0 ? 8 : 16;
 
-        if((ly + 16) >= y && (ly + 16) < (y + size) && oamBuffer.size() < 10) {
-            oamBuffer.add(new OAMObject(x, y, tileIndex, attributes));
+        if(x > 0 && (ly + 16) >= y && (ly + 16) < (y + size) && oamBuffer.size() < 10) {
+            oamBuffer.add(new OAMObject(x, y, size, tileIndex, attributes));
         }
 
     }
@@ -214,7 +217,54 @@ public class PPU extends ConnectedInternal implements Tickable {
         int ly = gb.getDataBus().read(0xFF44);
         int lcdc = gb.getDataBus().read(0xFF40);
 
-        if(backgroundPixelFifo.getSize() > 0) {
+        if((objectPixelFetcher.getCurrent() == null) && backgroundPixelFifo.getSize() > 0 && objectPixelFifo.getSize() > 0) {
+
+            Pixel bp = backgroundPixelFifo.pop();
+            if((lcdc & BitUtils.M_ZERO) == 0) {
+                bp = null;
+            }
+
+            Pixel op = objectPixelFifo.pop();
+            if((lcdc & BitUtils.M_ONE) == 0) {
+                op = null;
+            }
+
+            if(op == null && bp == null) {
+                lcd[ly][lx++] = new Pixel(0, 0, 0);
+                if(ly == 40) {
+                    System.out.println("PENIS");
+                }
+            } else if(op == null) {
+                lcd[ly][lx++] = bp;
+                if(ly == 40) {
+                    System.out.println("PENIS");
+                }
+            } else if(bp == null) {
+                lcd[ly][lx++] = op;
+                if(ly == 40) {
+                    System.out.println("PENIS");
+                }
+            } else {
+                if(op.getColor() == 0b00) {
+                    lcd[ly][lx++] = bp;
+                } else if(op.getBackgroundPriority() != 0 && bp.getColor() != 0b00) {
+                    lcd[ly][lx++] = bp;
+                    if(ly == 40) {
+                        System.out.println("lx=" + (lx - 1) + " " + bp);
+                    }
+                } else {
+                    lcd[ly][lx++] = op;
+                }
+            }
+
+            if((lcdc & BitUtils.M_FIVE) != 0) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
+                    backgroundPixelFifo.clear();
+                    backgroundPixelFetcher.startWindowMode();
+                }
+            }
+
+        } else if((objectPixelFetcher.getCurrent() == null) && backgroundPixelFifo.getSize() > 0) {
 
             Pixel p = backgroundPixelFifo.pop();
             if((lcdc & BitUtils.M_ZERO) != 0) {
@@ -234,17 +284,23 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         }
 
-        // Should still be okay because nothing can cause a delay yet
-        if(dot % 2 == 0) {
-            backgroundPixelFetcher.tick();
+        for(OAMObject obj : oamBuffer) {
+            if(obj.getX() <= lx + 8) {
+                oamBuffer.remove(obj);
+                objectPixelFetcher.reset();
+                objectPixelFetcher.setCurrent(obj);
+                //backgroundPixelFetcher.softReset();
+                break;
+            }
         }
 
-        //System.out.println("FIFO after dot #" + dot);
-        //backgroundPixelFifo.print();
-
-    }
-
-    private void renderBg() {
+        if(dot % 2 == 0) {
+            if(objectPixelFetcher.getCurrent() != null) {
+                objectPixelFetcher.tick();
+            } else {
+                backgroundPixelFetcher.tick();
+            }
+        }
 
     }
 
@@ -261,7 +317,7 @@ public class PPU extends ConnectedInternal implements Tickable {
         int stat = gb.getDataBus().read(0xFF41);
         int ir = gb.getDataBus().read(0xFF0F);
         int ie = gb.getDataBus().read(0xFFFF);
-        //System.out.println("LCDC: " + BitUtils.toBinary(lcdc) + " - STAT: " + BitUtils.toBinary(stat) + " - MODE: " + mode + " - IR: " + BitUtils.toBinary(ir) + " - IE: " + BitUtils.toBinary(ie) + " - IME: " + (gb.getCpu().isIme() ? "1" : "0"));
+        System.out.println("LCDC: " + BitUtils.toBinary(lcdc) + " - STAT: " + BitUtils.toBinary(stat) + " - MODE: " + mode + " - IR: " + BitUtils.toBinary(ir) + " - IE: " + BitUtils.toBinary(ie) + " - IME: " + (gb.getCpu().isIme() ? "1" : "0"));
     }
 
 }

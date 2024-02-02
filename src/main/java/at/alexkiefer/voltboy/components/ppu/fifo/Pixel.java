@@ -16,4 +16,12 @@ public class Pixel {
         return color;
     }
 
+    public int getPalette() {
+        return palette;
+    }
+
+    public int getBackgroundPriority() {
+        return backgroundPriority;
+    }
+
 }

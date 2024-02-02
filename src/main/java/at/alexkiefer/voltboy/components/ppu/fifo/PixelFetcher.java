@@ -35,6 +35,10 @@ public abstract class PixelFetcher extends ConnectedInternal implements Tickable
         return fetcherX;
     }
 
+    public int getStep() {
+        return step;
+    }
+
     @Override
     public abstract void tick();
 

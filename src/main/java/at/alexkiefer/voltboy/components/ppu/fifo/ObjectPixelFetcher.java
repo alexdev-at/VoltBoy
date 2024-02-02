@@ -2,10 +2,11 @@ package at.alexkiefer.voltboy.components.ppu.fifo;
 
 import at.alexkiefer.voltboy.VoltBoy;
 import at.alexkiefer.voltboy.components.ppu.objects.OAMObject;
+import at.alexkiefer.voltboy.util.BitUtils;
 
 public class ObjectPixelFetcher extends PixelFetcher {
 
-    OAMObject current;
+    private OAMObject current;
 
     public ObjectPixelFetcher(VoltBoy gb) {
 
@@ -19,13 +20,17 @@ public class ObjectPixelFetcher extends PixelFetcher {
         this.current = current;
     }
 
+    public OAMObject getCurrent() {
+        return current;
+    }
+
     @Override
     public void reset() {
         fetcherX = 0;
         step = 1;
         tileDataAddr = 0;
         tileData = 0;
-        firstFetch = true;
+        tileNumber = 0;
         current = null;
     }
 
@@ -51,6 +56,9 @@ public class ObjectPixelFetcher extends PixelFetcher {
     protected void fetchTileNumber() {
 
         tileNumber = current.getTileIndex();
+        if(current.getSize() == 16) {
+            tileNumber &= ~BitUtils.M_ZERO;
+        }
 
     }
 
@@ -60,8 +68,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int tileDataArea = 0x8000;
 
         int ly = gb.getDataBus().read(0xFF44);
-        int scy = gb.getDataBus().read(0xFF42);
-        int offset = 2 * ((ly + scy) % 8);
+        int offset = 2 * (ly % 8);
         tileDataAddr = tileDataArea + offset + (tileNumber * 16);
         tileData = gb.getDataBus().read(tileDataAddr++);
 
@@ -72,17 +79,12 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
         tileData |= gb.getDataBus().read(tileDataAddr) << 8;
 
-        if(firstFetch) {
-            firstFetch = false;
-            step = 0;
-        }
-
     }
 
     @Override
     protected void convertAndPush() {
 
-        BackgroundPixelFIFO fifo = gb.getPpu().getBackgroundPixelFifo();
+        ObjectPixelFIFO fifo = gb.getPpu().getObjectPixelFifo();
 
         if(fifo.getSize() > 0) {
             step--;
@@ -90,17 +92,28 @@ public class ObjectPixelFetcher extends PixelFetcher {
         }
 
         int lo = tileData & 0xFF;
+
         int hi = tileData >> 8;
 
-        for(int i = 0; i < 8; i++) {
-            int loBit = (lo & (1 << (7 - i))) >> (7 - i);
-            int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
-            int color = (loBit | (hiBit << 1));
-            fifo.push(new Pixel(color, 0, 0));
-            //fifo.push(new Pixel(gb.getDataBus().read(0xFF44) % 2 == 0 ? 0 : 3, 0, 0));
+        if(current.getAttributes().isXFlip()) {
+            for(int i = fifo.getSize(); i < 8; i++) {
+                int loBit = (lo & (1 << i)) >> i;
+                int hiBit = (hi & (1 << i)) >> i;
+                int color = (loBit | (hiBit << 1));
+                fifo.push(new Pixel(color, 0, 0));
+            }
+        } else {
+            for(int i = fifo.getSize(); i < 8; i++) {
+                int loBit = (lo & (1 << (7 - i))) >> (7 - i);
+                int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
+                int color = (loBit | (hiBit << 1));
+                fifo.push(new Pixel(color, 0, 0));
+            }
         }
 
         fetcherX = (fetcherX + 1) & 0x1F;
+
+        current = null;
 
     }
 

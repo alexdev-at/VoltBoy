@@ -27,4 +27,14 @@ public class BitUtils {
         return ret;
     }
 
+    public static int reverseFourBits(int value) {
+        int ret = 0;
+        for(int i = 0; i < 4; i++) {
+            ret <<= 1;
+            ret |= (value & 1);
+            value >>= 1;
+        }
+        return ret & 0xFF;
+    }
+
 }

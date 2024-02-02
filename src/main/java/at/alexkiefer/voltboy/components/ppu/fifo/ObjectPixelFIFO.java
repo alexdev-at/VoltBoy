@@ -9,8 +9,6 @@ public class ObjectPixelFIFO extends FIFO {
 
     public ObjectPixelFIFO(VoltBoy gb) {
         super(gb);
-        pixels = new Pixel[8];
-        size = 0;
     }
 
     @Override

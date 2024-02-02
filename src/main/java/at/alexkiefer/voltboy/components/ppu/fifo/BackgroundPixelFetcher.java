@@ -28,7 +28,6 @@ public class BackgroundPixelFetcher extends PixelFetcher {
     }
 
     public void softReset() {
-        fetcherX = 0;
         step = 1;
         tileNumber = 0;
         tileDataAddr = 0;
@@ -54,13 +53,12 @@ public class BackgroundPixelFetcher extends PixelFetcher {
     }
 
     public void startWindowMode() {
+        fetcherX = 0;
         windowMode = true;
-        softReset();
-    }
-
-    public void stopWindowMode() {
-        windowMode = false;
-        softReset();
+        step = 1;
+        tileNumber = 0;
+        tileDataAddr = 0;
+        tileData = 0;
     }
 
     public boolean isWindowMode() {
@@ -69,6 +67,10 @@ public class BackgroundPixelFetcher extends PixelFetcher {
 
     public void incWindowCounter() {
         fetcherWindowY++;
+    }
+
+    public int getWindowCounter() {
+        return fetcherWindowY;
     }
 
     public void resetWindowCounter() {
@@ -153,6 +155,7 @@ public class BackgroundPixelFetcher extends PixelFetcher {
             int loBit = (lo & (1 << (7 - i))) >> (7 - i);
             int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
             int color = (loBit | (hiBit << 1));
+
             fifo.push(new Pixel(color, 0, 0));
             //fifo.push(new Pixel(gb.getDataBus().read(0xFF44) % 2 == 0 ? 0 : 3, 0, 0));
         }

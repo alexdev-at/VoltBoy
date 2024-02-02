@@ -10,8 +10,6 @@ public class BackgroundPixelFIFO extends FIFO {
 
     public BackgroundPixelFIFO(VoltBoy gb) {
         super(gb);
-        pixels = new Pixel[8];
-        size = 0;
         discard = 0;
     }
 
