@@ -56,8 +56,12 @@ public class ObjectPixelFetcher extends PixelFetcher {
     protected void fetchTileNumber() {
 
         tileNumber = current.getTileIndex();
+        int ly = gb.getDataBus().read(0xFF44);
         if(current.getSize() == 16) {
             tileNumber &= ~BitUtils.M_ZERO;
+            if (ly >= current.getY() + 8) {
+                tileNumber++;
+            }
         }
 
     }
@@ -68,6 +72,9 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int tileDataArea = 0x8000;
 
         int ly = gb.getDataBus().read(0xFF44);
+        if (ly >= current.getY() + 8) {
+            ly -= 8;
+        }
         int offset;
         if(current.getAttributes().isYFlip()) {
             offset = 2 * (7 - (ly % 8));
@@ -95,12 +102,21 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int hi = tileData >> 8;
 
         Pixel[] pixels = new Pixel[8];
+        int palette = gb.getDataBus().read(current.getAttributes().isObjectPaletteZero() ? 0xFF48 : 0xFF49);
 
         if(current.getAttributes().isXFlip()) {
             for(int i = 0; i < 8; i++) {
                 int loBit = (lo & (1 << i)) >> i;
                 int hiBit = (hi & (1 << i)) >> i;
                 int color = (loBit | (hiBit << 1));
+
+                color = switch(color) {
+                    case 0b01 -> (palette & 0b1100) >> 2;
+                    case 0b10 -> (palette & 0b110000) >> 4;
+                    case 0b11 -> (palette & 0b11000000) >> 6;
+                    default -> color;
+                };
+
                 pixels[i] = new Pixel(color, 0, current.getAttributes().isPriority() ? 1 : 0);
             }
         } else {
@@ -108,6 +124,14 @@ public class ObjectPixelFetcher extends PixelFetcher {
                 int loBit = (lo & (1 << (7 - i))) >> (7 - i);
                 int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
                 int color = (loBit | (hiBit << 1));
+
+                color = switch(color) {
+                    case 0b01 -> (palette & 0b1100) >> 2;
+                    case 0b10 -> (palette & 0b110000) >> 4;
+                    case 0b11 -> (palette & 0b11000000) >> 6;
+                    default -> color;
+                };
+
                 pixels[i] = new Pixel(color, 0, current.getAttributes().isPriority() ? 1 : 0);
             }
         }

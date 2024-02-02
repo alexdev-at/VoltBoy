@@ -152,11 +152,19 @@ public class BackgroundPixelFetcher extends PixelFetcher {
         int hi = tileData >> 8;
 
         Pixel[] pixels = new Pixel[8];
+        int palette = gb.getDataBus().read(0xFF47);
 
         for(int i = 0; i < 8; i++) {
             int loBit = (lo & (1 << (7 - i))) >> (7 - i);
             int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
             int color = (loBit | (hiBit << 1));
+
+            switch(color) {
+                case 0b00 -> color = palette & 0b11;
+                case 0b01 -> color = (palette & 0b1100) >> 2;
+                case 0b10 -> color = (palette & 0b110000) >> 4;
+                case 0b11 -> color = (palette & 0b11000000) >> 6;
+            }
 
             pixels[i] = new Pixel(color, 0, 0);
         }

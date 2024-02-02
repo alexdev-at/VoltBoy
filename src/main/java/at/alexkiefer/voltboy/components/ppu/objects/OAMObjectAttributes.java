@@ -23,7 +23,7 @@ public class OAMObjectAttributes {
     }
 
     public boolean isObjectPaletteZero() {
-        return (flags & BitUtils.M_FOUR) != 0;
+        return (flags & BitUtils.M_FOUR) == 0;
     }
 
 }

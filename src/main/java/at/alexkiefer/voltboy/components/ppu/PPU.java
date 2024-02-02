@@ -23,8 +23,8 @@ public class PPU extends ConnectedInternal implements Tickable {
 
     private PPUMode mode;
     private int dot;
-    private int penaltyDots;
     private int addr;
+    private int oamIndex;
 
     private final List<OAMObject> oamBuffer;
 
@@ -41,15 +41,15 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         mode = PPUMode.MODE_2;
         dot = 0;
-        penaltyDots = 0;
         addr = 0x0000;
+        oamIndex = 0;
 
         oamBuffer =  new ArrayList<>();
 
         lcd = new Pixel[144][160];
         for(int i = 0; i < 144; i++) {
             for(int j = 0; j < 160; j++) {
-                lcd[i][j] = new Pixel(5, 0, 0);
+                lcd[i][j] = new Pixel(0, 0, 0);
             }
         }
 
@@ -103,6 +103,29 @@ public class PPU extends ConnectedInternal implements Tickable {
             objectPixelFetcher.reset();
             oamBuffer.clear();
             addr = 0xFE00;
+            oamIndex = 0;
+        }
+
+        int ly = gb.getDataBus().read(0xFF44);
+
+        int stat = gb.getDataBus().read(0xFF41);
+        PPUMode oldMode = mode;
+
+        if(ly >= 144) {
+            backgroundPixelFetcher.resetWindowCounter();
+            mode = PPUMode.MODE_1;
+        } else {
+
+            if(dot == 80) {
+                mode = PPUMode.MODE_3;
+                oamBuffer.sort(Comparator.comparingInt(OAMObject::getX));
+            } else if(lx == 160) {
+                lx = 0;
+                mode = PPUMode.MODE_0;
+            } else if(dot == 0) {
+                mode = PPUMode.MODE_2;
+            }
+
         }
 
         switch(mode) {
@@ -114,28 +137,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         dot++;
 
-        int ly = gb.getDataBus().read(0xFF44);
-
-        int stat = gb.getDataBus().read(0xFF41);
-        PPUMode oldMode = mode;
-
         ly++;
-
-        if(ly > 144) {
-            backgroundPixelFetcher.resetWindowCounter();
-            mode = PPUMode.MODE_1;
-        } else {
-
-            if(dot == 80) {
-                mode = PPUMode.MODE_3;
-            } else if(lx == 160) {
-                lx = 0;
-                mode = PPUMode.MODE_0;
-            } else if(dot == 456) {
-                mode = PPUMode.MODE_2;
-            }
-
-        }
 
         if(mode != oldMode) {
 
@@ -172,14 +174,13 @@ public class PPU extends ConnectedInternal implements Tickable {
         if(dot == 456) {
 
             dot = 0;
-
             lx = 0;
 
             if(ly == gb.getDataBus().read(0xFF45) && (stat & BitUtils.M_SIX) != 0) {
                 gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
             }
 
-            gb.getDataBus().writeUnrestricted(0xFF44, ly % 154);
+            gb.getDataBus().writeUnrestricted(0xFF44, ly);
 
             if(backgroundPixelFetcher.isWindowMode()) {
                 backgroundPixelFetcher.incWindowCounter();
@@ -205,8 +206,7 @@ public class PPU extends ConnectedInternal implements Tickable {
         int size = (gb.getDataBus().read(0xFF40) & BitUtils.M_TWO) == 0 ? 8 : 16;
 
         if(x > 0 && (ly + 16) >= y && (ly + 16) < (y + size) && oamBuffer.size() < 10) {
-            oamBuffer.add(new OAMObject(x, y, size, tileIndex, attributes));
-            oamBuffer.sort(Comparator.comparingInt(OAMObject::getX));
+            oamBuffer.add(new OAMObject(x, y, size, oamIndex++, tileIndex, attributes));
         }
 
     }
@@ -267,7 +267,10 @@ public class PPU extends ConnectedInternal implements Tickable {
         } else if(objectPixelFetcher.getCurrent() == null && backgroundPixelFifo.getSize() > 0) {
 
             Pixel p = backgroundPixelFifo.pop();
-            lcd[ly][lx++] = (lcdc & BitUtils.M_ZERO) == 0 || p == null ? new Pixel(0, 0, 0) : p;
+            if(p != null) {
+                lcd[ly][lx++] = (lcdc & BitUtils.M_ZERO) == 0 ? new Pixel(0, 0, 0) : p;
+            }
+
             if((lcdc & BitUtils.M_FIVE) != 0) {
                 if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
                     backgroundPixelFifo.clear();
