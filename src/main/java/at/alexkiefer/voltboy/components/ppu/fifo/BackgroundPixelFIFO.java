@@ -18,8 +18,9 @@ public class BackgroundPixelFIFO extends FIFO {
     }
 
     @Override
-    public void push(Pixel p) {
-        pixels[size++] = p;
+    public void fill(Pixel[] p) {
+        pixels = p;
+        size = 8;
     }
 
     @Override

@@ -20,7 +20,7 @@ public abstract class FIFO extends ConnectedInternal {
         return size;
     }
 
-    abstract void push(Pixel p);
+    abstract void fill(Pixel[] p);
 
     abstract Pixel pop();
 

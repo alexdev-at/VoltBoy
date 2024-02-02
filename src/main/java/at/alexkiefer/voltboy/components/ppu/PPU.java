@@ -8,9 +8,7 @@ import at.alexkiefer.voltboy.components.ppu.objects.OAMObject;
 import at.alexkiefer.voltboy.components.ppu.objects.OAMObjectAttributes;
 import at.alexkiefer.voltboy.util.BitUtils;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 public class PPU extends ConnectedInternal implements Tickable {
 
@@ -188,7 +186,6 @@ public class PPU extends ConnectedInternal implements Tickable {
             }
 
         }
-
 
     }
 

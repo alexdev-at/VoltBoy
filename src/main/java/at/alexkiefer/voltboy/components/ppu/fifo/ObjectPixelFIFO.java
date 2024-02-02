@@ -12,8 +12,17 @@ public class ObjectPixelFIFO extends FIFO {
     }
 
     @Override
-    public void push(Pixel p) {
-        pixels[size++] = p;
+    public void fill(Pixel[] p) {
+        for(int i = 0; i < 8; i++) {
+            Pixel oldPixel = pixels[i];
+            Pixel newPixel = p[i];
+            if(oldPixel == null || oldPixel.getColor() == 0b00) {
+                pixels[i] = newPixel;
+            } else {
+                pixels[i] = oldPixel;
+            }
+        }
+        size = 8;
     }
 
     @Override

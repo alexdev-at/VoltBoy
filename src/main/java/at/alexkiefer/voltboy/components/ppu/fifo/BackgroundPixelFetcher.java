@@ -151,14 +151,17 @@ public class BackgroundPixelFetcher extends PixelFetcher {
         int lo = tileData & 0xFF;
         int hi = tileData >> 8;
 
+        Pixel[] pixels = new Pixel[8];
+
         for(int i = 0; i < 8; i++) {
             int loBit = (lo & (1 << (7 - i))) >> (7 - i);
             int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
             int color = (loBit | (hiBit << 1));
 
-            fifo.push(new Pixel(color, 0, 0));
-            //fifo.push(new Pixel(gb.getDataBus().read(0xFF44) % 2 == 0 ? 0 : 3, 0, 0));
+            pixels[i] = new Pixel(color, 0, 0);
         }
+
+        fifo.fill(pixels);
 
         fetcherX = (fetcherX + 1) & 0x1F;
 
