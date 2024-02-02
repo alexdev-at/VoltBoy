@@ -9,6 +9,7 @@ import at.alexkiefer.voltboy.components.ppu.objects.OAMObjectAttributes;
 import at.alexkiefer.voltboy.util.BitUtils;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class PPU extends ConnectedInternal implements Tickable {
@@ -113,8 +114,6 @@ public class PPU extends ConnectedInternal implements Tickable {
             case MODE_1 -> vBlank();
         }
 
-        //System.out.println(mode.toString());
-
         dot++;
 
         int ly = gb.getDataBus().read(0xFF44);
@@ -176,6 +175,8 @@ public class PPU extends ConnectedInternal implements Tickable {
 
             dot = 0;
 
+            lx = 0;
+
             if(ly == gb.getDataBus().read(0xFF45) && (stat & BitUtils.M_SIX) != 0) {
                 gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
             }
@@ -208,11 +209,80 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         if(x > 0 && (ly + 16) >= y && (ly + 16) < (y + size) && oamBuffer.size() < 10) {
             oamBuffer.add(new OAMObject(x, y, size, tileIndex, attributes));
+            oamBuffer.sort(Comparator.comparingInt(OAMObject::getX));
         }
 
     }
 
     private void render() {
+
+        int ly = gb.getDataBus().read(0xFF44);
+        int lcdc = gb.getDataBus().read(0xFF40);
+
+        OAMObject obj = oamBuffer.isEmpty() ? null : oamBuffer.getFirst();
+        if(obj != null && obj.getX() <= lx + 8) {
+            oamBuffer.remove(obj);
+            objectPixelFetcher.reset();
+            objectPixelFetcher.setCurrent(obj);
+        }
+
+        if(objectPixelFetcher.getCurrent() != null && backgroundPixelFetcher.getStep() >= 6) {
+            objectPixelFetcher.tick();
+        } else {
+            backgroundPixelFetcher.tick();
+        }
+
+        if(objectPixelFetcher.getCurrent() == null && objectPixelFifo.getSize() > 0 && backgroundPixelFifo.getSize() > 0) {
+
+            Pixel bp = backgroundPixelFifo.pop();
+            if((lcdc & BitUtils.M_ZERO) == 0) {
+                bp = null;
+            }
+
+            Pixel op = objectPixelFifo.pop();
+            if((lcdc & BitUtils.M_ONE) == 0) {
+                op = null;
+            }
+
+            if(op == null && bp == null) {
+                lcd[ly][lx++] = new Pixel(0, 0, 0);
+            } else if(op == null) {
+                lcd[ly][lx++] = bp;
+            } else if(bp == null) {
+                lcd[ly][lx++] = op;
+            } else {
+                if(op.getColor() == 0b00) {
+                    lcd[ly][lx++] = bp;
+                } else if(op.getBackgroundPriority() != 0 && bp.getColor() != 0b00) {
+                    lcd[ly][lx++] = bp;
+                } else {
+                    lcd[ly][lx++] = op;
+                }
+            }
+
+            if((lcdc & BitUtils.M_FIVE) != 0) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
+                    backgroundPixelFifo.clear();
+                    backgroundPixelFetcher.startWindowMode();
+                }
+            }
+
+        } else if(objectPixelFetcher.getCurrent() == null && backgroundPixelFifo.getSize() > 0) {
+
+            Pixel p = backgroundPixelFifo.pop();
+            lcd[ly][lx++] = (lcdc & BitUtils.M_ZERO) == 0 || p == null ? new Pixel(0, 0, 0) : p;
+            if((lcdc & BitUtils.M_FIVE) != 0) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
+                    backgroundPixelFifo.clear();
+                    backgroundPixelFetcher.startWindowMode();
+                }
+            }
+
+        }
+
+    }
+
+    private void renderOld() {
 
         int ly = gb.getDataBus().read(0xFF44);
         int lcdc = gb.getDataBus().read(0xFF40);
@@ -231,27 +301,15 @@ public class PPU extends ConnectedInternal implements Tickable {
 
             if(op == null && bp == null) {
                 lcd[ly][lx++] = new Pixel(0, 0, 0);
-                if(ly == 40) {
-                    System.out.println("PENIS");
-                }
             } else if(op == null) {
                 lcd[ly][lx++] = bp;
-                if(ly == 40) {
-                    System.out.println("PENIS");
-                }
             } else if(bp == null) {
                 lcd[ly][lx++] = op;
-                if(ly == 40) {
-                    System.out.println("PENIS");
-                }
             } else {
                 if(op.getColor() == 0b00) {
                     lcd[ly][lx++] = bp;
                 } else if(op.getBackgroundPriority() != 0 && bp.getColor() != 0b00) {
                     lcd[ly][lx++] = bp;
-                    if(ly == 40) {
-                        System.out.println("lx=" + (lx - 1) + " " + bp);
-                    }
                 } else {
                     lcd[ly][lx++] = op;
                 }

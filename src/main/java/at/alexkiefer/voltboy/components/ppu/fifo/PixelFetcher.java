@@ -27,14 +27,6 @@ public abstract class PixelFetcher extends ConnectedInternal implements Tickable
 
     abstract void reset();
 
-    public void setFetcherX(int fetcherX) {
-        this.fetcherX = fetcherX;
-    }
-
-    public int getFetcherX() {
-        return fetcherX;
-    }
-
     public int getStep() {
         return step;
     }

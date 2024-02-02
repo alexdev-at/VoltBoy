@@ -44,6 +44,7 @@ public class BackgroundPixelFIFO extends FIFO {
     public void clear() {
         Arrays.fill(pixels, null);
         size = 0;
+        discard = 0;
     }
 
 }

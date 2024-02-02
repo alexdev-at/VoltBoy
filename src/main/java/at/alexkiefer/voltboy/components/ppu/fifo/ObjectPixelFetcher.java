@@ -6,6 +6,7 @@ import at.alexkiefer.voltboy.util.BitUtils;
 
 public class ObjectPixelFetcher extends PixelFetcher {
 
+    private OAMObject last;
     private OAMObject current;
 
     public ObjectPixelFetcher(VoltBoy gb) {
@@ -32,6 +33,16 @@ public class ObjectPixelFetcher extends PixelFetcher {
         tileData = 0;
         tileNumber = 0;
         current = null;
+        last = null;
+    }
+
+    public void softReset() {
+        fetcherX = 0;
+        step = 1;
+        tileDataAddr = 0;
+        tileData = 0;
+        tileNumber = 0;
+        current = null;
     }
 
     @Override
@@ -39,14 +50,14 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
         switch(step) {
             case 1 -> fetchTileNumber();
-            case 2 -> fetchTileDataLow();
-            case 3 -> fetchTileDataHigh();
-            case 4 -> convertAndPush();
+            case 3 -> fetchTileDataLow();
+            case 5 -> fetchTileDataHigh();
+            case 7 -> convertAndPush();
         }
 
         step++;
 
-        if(step == 5) {
+        if(step == 9) {
             step = 1;
         }
 
@@ -95,15 +106,23 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
         int hi = tileData >> 8;
 
+
+        int diff = 0;
+        if(last != null) {
+            if(diff >= 8) {
+                diff = 0;
+            }
+        }
+
         if(current.getAttributes().isXFlip()) {
-            for(int i = fifo.getSize(); i < 8; i++) {
+            for(int i = diff; i < 8; i++) {
                 int loBit = (lo & (1 << i)) >> i;
                 int hiBit = (hi & (1 << i)) >> i;
                 int color = (loBit | (hiBit << 1));
                 fifo.push(new Pixel(color, 0, 0));
             }
         } else {
-            for(int i = fifo.getSize(); i < 8; i++) {
+            for(int i = diff; i < 8; i++) {
                 int loBit = (lo & (1 << (7 - i))) >> (7 - i);
                 int hiBit = (hi & (1 << (7 - i))) >> (7 - i);
                 int color = (loBit | (hiBit << 1));
@@ -113,6 +132,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
         fetcherX = (fetcherX + 1) & 0x1F;
 
+        last = current;
         current = null;
 
     }

@@ -39,14 +39,14 @@ public class BackgroundPixelFetcher extends PixelFetcher {
 
         switch(step) {
             case 1 -> fetchTileNumber();
-            case 2 -> fetchTileDataLow();
-            case 3 -> fetchTileDataHigh();
-            case 4 -> convertAndPush();
+            case 3 -> fetchTileDataLow();
+            case 5 -> fetchTileDataHigh();
+            case 7 -> convertAndPush();
         }
 
         step++;
 
-        if(step == 5) {
+        if(step == 9) {
             step = 1;
         }
 
