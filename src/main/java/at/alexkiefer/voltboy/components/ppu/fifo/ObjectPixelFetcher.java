@@ -59,9 +59,6 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int ly = gb.getDataBus().read(0xFF44);
         if(current.getSize() == 16) {
             tileNumber &= ~BitUtils.M_ZERO;
-            if (ly >= current.getY() + 8) {
-                tileNumber++;
-            }
         }
 
     }
@@ -72,16 +69,11 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int tileDataArea = 0x8000;
 
         int ly = gb.getDataBus().read(0xFF44);
-        if (ly >= current.getY() + 8) {
-            ly -= 8;
-        }
-        int offset;
+        int offset = (ly + 16) - current.getY();
         if(current.getAttributes().isYFlip()) {
-            offset = 2 * (7 - (ly % 8));
-        } else {
-            offset = 2 * (ly % 8);
+            offset = (current.getSize() - 1) - offset;
         }
-        tileDataAddr = tileDataArea + offset + (tileNumber * 16);
+        tileDataAddr = tileDataArea + (2 * offset) + (tileNumber * 16);
         tileData = gb.getDataBus().read(tileDataAddr++);
 
     }
@@ -90,6 +82,10 @@ public class ObjectPixelFetcher extends PixelFetcher {
     protected void fetchTileDataHigh() {
 
         tileData |= gb.getDataBus().read(tileDataAddr) << 8;
+
+        if(current.getSize() == 16) {
+            System.out.println();
+        }
 
     }
 

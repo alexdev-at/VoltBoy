@@ -9,6 +9,8 @@ import at.alexkiefer.voltboy.components.ppu.objects.OAMObjectAttributes;
 import at.alexkiefer.voltboy.util.BitUtils;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class PPU extends ConnectedInternal implements Tickable {
 
@@ -26,7 +28,7 @@ public class PPU extends ConnectedInternal implements Tickable {
     private int addr;
     private int oamIndex;
 
-    private final List<OAMObject> oamBuffer;
+    private List<OAMObject> oamBuffer;
 
     public PPU(VoltBoy gb) {
 
@@ -119,6 +121,11 @@ public class PPU extends ConnectedInternal implements Tickable {
             if(dot == 80) {
                 mode = PPUMode.MODE_3;
                 oamBuffer.sort(Comparator.comparingInt(OAMObject::getX));
+                // Trick from StackOverflow
+                Set<Integer> seen = ConcurrentHashMap.newKeySet();
+                oamBuffer = oamBuffer.stream()
+                        .filter(o -> seen.add(o.getX()))
+                        .collect(Collectors.toList());
             } else if(lx == 160) {
                 lx = 0;
                 mode = PPUMode.MODE_0;
@@ -278,86 +285,6 @@ public class PPU extends ConnectedInternal implements Tickable {
                 }
             }
 
-        }
-
-    }
-
-    private void renderOld() {
-
-        int ly = gb.getDataBus().read(0xFF44);
-        int lcdc = gb.getDataBus().read(0xFF40);
-
-        if((objectPixelFetcher.getCurrent() == null) && backgroundPixelFifo.getSize() > 0 && objectPixelFifo.getSize() > 0) {
-
-            Pixel bp = backgroundPixelFifo.pop();
-            if((lcdc & BitUtils.M_ZERO) == 0) {
-                bp = null;
-            }
-
-            Pixel op = objectPixelFifo.pop();
-            if((lcdc & BitUtils.M_ONE) == 0) {
-                op = null;
-            }
-
-            if(op == null && bp == null) {
-                lcd[ly][lx++] = new Pixel(0, 0, 0);
-            } else if(op == null) {
-                lcd[ly][lx++] = bp;
-            } else if(bp == null) {
-                lcd[ly][lx++] = op;
-            } else {
-                if(op.getColor() == 0b00) {
-                    lcd[ly][lx++] = bp;
-                } else if(op.getBackgroundPriority() != 0 && bp.getColor() != 0b00) {
-                    lcd[ly][lx++] = bp;
-                } else {
-                    lcd[ly][lx++] = op;
-                }
-            }
-
-            if((lcdc & BitUtils.M_FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
-                    backgroundPixelFifo.clear();
-                    backgroundPixelFetcher.startWindowMode();
-                }
-            }
-
-        } else if((objectPixelFetcher.getCurrent() == null) && backgroundPixelFifo.getSize() > 0) {
-
-            Pixel p = backgroundPixelFifo.pop();
-            if((lcdc & BitUtils.M_ZERO) != 0) {
-                if(p != null) {
-                    lcd[ly][lx++] = p;
-                }
-            } else {
-                lcd[ly][lx++] = new Pixel(0, 0, 0);
-            }
-
-            if((lcdc & BitUtils.M_FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
-                    backgroundPixelFifo.clear();
-                    backgroundPixelFetcher.startWindowMode();
-                }
-            }
-
-        }
-
-        for(OAMObject obj : oamBuffer) {
-            if(obj.getX() <= lx + 8) {
-                oamBuffer.remove(obj);
-                objectPixelFetcher.reset();
-                objectPixelFetcher.setCurrent(obj);
-                //backgroundPixelFetcher.softReset();
-                break;
-            }
-        }
-
-        if(dot % 2 == 0) {
-            if(objectPixelFetcher.getCurrent() != null) {
-                objectPixelFetcher.tick();
-            } else {
-                backgroundPixelFetcher.tick();
-            }
         }
 
     }
