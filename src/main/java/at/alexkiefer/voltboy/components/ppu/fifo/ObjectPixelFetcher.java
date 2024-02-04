@@ -37,6 +37,11 @@ public class ObjectPixelFetcher extends PixelFetcher {
     @Override
     public void tick() {
 
+        if((gb.getDataBus().readUnrestricted(0xFF40) & BitUtils.M_ONE) == 0) {
+            reset();
+            gb.getPpu().getObjectPixelFifo().clear();
+        }
+
         switch(step) {
             case 1 -> fetchTileNumber();
             case 3 -> fetchTileDataLow();
@@ -56,8 +61,8 @@ public class ObjectPixelFetcher extends PixelFetcher {
     protected void fetchTileNumber() {
 
         tileNumber = current.getTileIndex();
-        int ly = gb.getDataBus().read(0xFF44);
-        if(current.getSize() == 16) {
+        int size = (gb.getDataBus().readUnrestricted(0xFF40) & BitUtils.M_TWO) == 0 ? 8 : 16;
+        if(size == 16) {
             tileNumber &= ~BitUtils.M_ZERO;
         }
 
@@ -68,24 +73,21 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
         int tileDataArea = 0x8000;
 
-        int ly = gb.getDataBus().read(0xFF44);
+        int ly = gb.getDataBus().readUnrestricted(0xFF44);
         int offset = (ly + 16) - current.getY();
         if(current.getAttributes().isYFlip()) {
-            offset = (current.getSize() - 1) - offset;
+            int size = (gb.getDataBus().readUnrestricted(0xFF40) & BitUtils.M_TWO) == 0 ? 8 : 16;
+            offset = (size - 1) - offset;
         }
         tileDataAddr = tileDataArea + (2 * offset) + (tileNumber * 16);
-        tileData = gb.getDataBus().read(tileDataAddr++);
+        tileData = gb.getDataBus().readUnrestricted(tileDataAddr++);
 
     }
 
     @Override
     protected void fetchTileDataHigh() {
 
-        tileData |= gb.getDataBus().read(tileDataAddr) << 8;
-
-        if(current.getSize() == 16) {
-            System.out.println();
-        }
+        tileData |= gb.getDataBus().readUnrestricted(tileDataAddr) << 8;
 
     }
 
@@ -98,7 +100,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int hi = tileData >> 8;
 
         Pixel[] pixels = new Pixel[8];
-        int palette = gb.getDataBus().read(current.getAttributes().isObjectPaletteZero() ? 0xFF48 : 0xFF49);
+        int palette = gb.getDataBus().readUnrestricted(current.getAttributes().isObjectPaletteZero() ? 0xFF48 : 0xFF49);
 
         if(current.getAttributes().isXFlip()) {
             for(int i = 0; i < 8; i++) {

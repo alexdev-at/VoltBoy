@@ -54,6 +54,10 @@ public class AddressSpace extends ConnectedInternal {
         }
     }
 
+    public int readUnrestricted(int addr) {
+        return mem[(addr & 0xFFFF) - start];
+    }
+
     public void writeUnrestricted(int addr, int data) {
         if(!readOnly) {
             mem[(addr & 0xFFFF) - start] = data & 0xFF;

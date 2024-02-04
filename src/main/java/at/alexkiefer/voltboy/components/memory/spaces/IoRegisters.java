@@ -25,11 +25,14 @@ public class IoRegisters extends AddressSpace {
     public void write(int addr, int data) {
         switch(addr) {
             case 0xFF04 -> {
-                super.write(addr, 0);
+                super.writeUnrestricted(addr, 0);
                 gb.getTimer().resetDiv();
             }
             case 0xFF07 -> {
-                super.write(addr, data & 0b111);
+                super.writeUnrestricted(addr, data & 0b111);
+            }
+            case 0xFF46 -> {
+                gb.getCpu().getDma().scheduleDmaTransfer(data << 8);
             }
             default -> super.write(addr, data);
         }

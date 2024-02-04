@@ -87,6 +87,9 @@ public class DataBus extends ConnectedInternal {
 
     public int read(int addr) {
         addr &= 0xFFFF;
+        if(gb.getCpu() != null && gb.getCpu().getDma().isActive() && (addr < 0xFF80 || addr > 0xFFFE)) {
+            return 0xFF;
+        }
         for(AddressSpace as : addressSpaces) {
             if(addr >= as.getStart() && addr <= as.getEnd()) {
                 return as.read(addr);
@@ -97,9 +100,12 @@ public class DataBus extends ConnectedInternal {
 
     public void write(int addr, int data) {
         addr &= 0xFFFF;
-        if(addr == 0xFF01) {
-            System.out.print((char) data);
+        if(gb.getCpu() != null && gb.getCpu().getDma().isActive() && (addr < 0xFF80 || addr > 0xFFFE)) {
+            return;
         }
+        /*if(addr == 0xFF01) { // serial debug print
+            System.out.print((char) data);
+        }*/
         for(AddressSpace as : addressSpaces) {
             if(addr >= as.getStart() && addr <= as.getEnd()) {
                 as.write(addr, data);
@@ -107,6 +113,16 @@ public class DataBus extends ConnectedInternal {
             }
         }
         throw new RuntimeException("Write at " + BitUtils.toHex(addr) + " is invalid!");
+    }
+
+    public int readUnrestricted(int addr) {
+        addr &= 0xFFFF;
+        for(AddressSpace as : addressSpaces) {
+            if(addr >= as.getStart() && addr <= as.getEnd()) {
+                return as.readUnrestricted(addr);
+            }
+        }
+        throw new RuntimeException("Read at " + BitUtils.toHex(addr) + " is invalid!");
     }
 
     public void writeUnrestricted(int addr, int data) {

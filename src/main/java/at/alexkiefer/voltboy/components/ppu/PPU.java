@@ -84,7 +84,7 @@ public class PPU extends ConnectedInternal implements Tickable {
     @Override
     public void tick() {
 
-        if((gb.getDataBus().read(0xFF40) & BitUtils.M_SEVEN) == 0) {
+        if((gb.getDataBus().readUnrestricted(0xFF40) & BitUtils.M_SEVEN) == 0) {
             return;
         }
 
@@ -99,7 +99,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         if(dot == 0) {
             backgroundPixelFifo.clear();
-            backgroundPixelFifo.discardPixels(gb.getDataBus().read(0xFF43) % 8);
+            backgroundPixelFifo.discardPixels(gb.getDataBus().readUnrestricted(0xFF43) % 8);
             backgroundPixelFetcher.reset();
             objectPixelFifo.clear();
             objectPixelFetcher.reset();
@@ -108,9 +108,9 @@ public class PPU extends ConnectedInternal implements Tickable {
             oamIndex = 0;
         }
 
-        int ly = gb.getDataBus().read(0xFF44);
+        int ly = gb.getDataBus().readUnrestricted(0xFF44);
 
-        int stat = gb.getDataBus().read(0xFF41);
+        int stat = gb.getDataBus().readUnrestricted(0xFF41);
         PPUMode oldMode = mode;
 
         if(ly >= 144) {
@@ -149,30 +149,30 @@ public class PPU extends ConnectedInternal implements Tickable {
         if(mode != oldMode) {
 
             stat = (stat & 0b11111100) | mode.getValue();
-            gb.getDataBus().write(0xFF41, stat);
+            gb.getDataBus().writeUnrestricted(0xFF41, stat);
 
             switch(mode) {
                 case MODE_0 -> {
                     if((stat & BitUtils.M_THREE) != 0) {
-                        gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
+                        gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().readUnrestricted(0xFF0F) | BitUtils.M_ONE);
                     }
                 }
                 case MODE_1 -> {
-                    gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ZERO);
+                    gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().readUnrestricted(0xFF0F) | BitUtils.M_ZERO);
                     if((stat & BitUtils.M_FOUR) != 0) {
-                        gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
+                        gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().readUnrestricted(0xFF0F) | BitUtils.M_ONE);
                     }
                 }
                 case MODE_2 -> {
                     if((stat & BitUtils.M_FIVE) != 0) {
-                        gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
+                        gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().readUnrestricted(0xFF0F) | BitUtils.M_ONE);
                     }
                 }
             }
 
         }
 
-        if(ly == gb.getDataBus().read(0xFF45)) {
+        if(ly == gb.getDataBus().readUnrestricted(0xFF45)) {
             gb.getDataBus().writeUnrestricted(0xFF41, stat | BitUtils.M_TWO);
         } else {
             gb.getDataBus().writeUnrestricted(0xFF41, stat & ~BitUtils.M_TWO);
@@ -183,8 +183,8 @@ public class PPU extends ConnectedInternal implements Tickable {
             dot = 0;
             lx = 0;
 
-            if(ly == gb.getDataBus().read(0xFF45) && (stat & BitUtils.M_SIX) != 0) {
-                gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().read(0xFF0F) | BitUtils.M_ONE);
+            if(ly == gb.getDataBus().readUnrestricted(0xFF45) && (stat & BitUtils.M_SIX) != 0) {
+                gb.getDataBus().writeUnrestricted(0xFF0F, gb.getDataBus().readUnrestricted(0xFF0F) | BitUtils.M_ONE);
             }
 
             gb.getDataBus().writeUnrestricted(0xFF44, ly);
@@ -204,13 +204,13 @@ public class PPU extends ConnectedInternal implements Tickable {
             return;
         }
 
-        int y = gb.getDataBus().read(addr++);
-        int x = gb.getDataBus().read(addr++);
-        int tileIndex = gb.getDataBus().read(addr++);
-        OAMObjectAttributes attributes = new OAMObjectAttributes(gb.getDataBus().read(addr++));
+        int y = gb.getDataBus().readUnrestricted(addr++);
+        int x = gb.getDataBus().readUnrestricted(addr++);
+        int tileIndex = gb.getDataBus().readUnrestricted(addr++);
+        OAMObjectAttributes attributes = new OAMObjectAttributes(gb.getDataBus().readUnrestricted(addr++));
 
-        int ly = gb.getDataBus().read(0xFF44);
-        int size = (gb.getDataBus().read(0xFF40) & BitUtils.M_TWO) == 0 ? 8 : 16;
+        int ly = gb.getDataBus().readUnrestricted(0xFF44);
+        int size = (gb.getDataBus().readUnrestricted(0xFF40) & BitUtils.M_TWO) == 0 ? 8 : 16;
 
         if(x > 0 && (ly + 16) >= y && (ly + 16) < (y + size) && oamBuffer.size() < 10) {
             oamBuffer.add(new OAMObject(x, y, size, oamIndex++, tileIndex, attributes));
@@ -220,8 +220,8 @@ public class PPU extends ConnectedInternal implements Tickable {
 
     private void render() {
 
-        int ly = gb.getDataBus().read(0xFF44);
-        int lcdc = gb.getDataBus().read(0xFF40);
+        int ly = gb.getDataBus().readUnrestricted(0xFF44);
+        int lcdc = gb.getDataBus().readUnrestricted(0xFF40);
 
         OAMObject obj = oamBuffer.isEmpty() ? null : oamBuffer.getFirst();
         if(obj != null && obj.getX() <= lx + 8) {
@@ -265,7 +265,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             }
 
             if((lcdc & BitUtils.M_FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().readUnrestricted(0xFF4A) && lx >= (gb.getDataBus().readUnrestricted(0xFF4B) - 7)) {
                     backgroundPixelFifo.clear();
                     backgroundPixelFetcher.startWindowMode();
                 }
@@ -279,7 +279,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             }
 
             if((lcdc & BitUtils.M_FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().read(0xFF4A) && lx >= (gb.getDataBus().read(0xFF4B) - 7)) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getDataBus().readUnrestricted(0xFF4A) && lx >= (gb.getDataBus().readUnrestricted(0xFF4B) - 7)) {
                     backgroundPixelFifo.clear();
                     backgroundPixelFetcher.startWindowMode();
                 }
@@ -298,10 +298,10 @@ public class PPU extends ConnectedInternal implements Tickable {
     }
 
     private void debugPrint() {
-        int lcdc = gb.getDataBus().read(0xFF40);
-        int stat = gb.getDataBus().read(0xFF41);
-        int ir = gb.getDataBus().read(0xFF0F);
-        int ie = gb.getDataBus().read(0xFFFF);
+        int lcdc = gb.getDataBus().readUnrestricted(0xFF40);
+        int stat = gb.getDataBus().readUnrestricted(0xFF41);
+        int ir = gb.getDataBus().readUnrestricted(0xFF0F);
+        int ie = gb.getDataBus().readUnrestricted(0xFFFF);
         System.out.println("LCDC: " + BitUtils.toBinary(lcdc) + " - STAT: " + BitUtils.toBinary(stat) + " - MODE: " + mode + " - IR: " + BitUtils.toBinary(ir) + " - IE: " + BitUtils.toBinary(ie) + " - IME: " + (gb.getCpu().isIme() ? "1" : "0"));
     }
 

@@ -16,6 +16,7 @@ import java.util.Arrays;
 public class CPU extends ConnectedInternal implements Tickable {
 
     private final Registers reg;
+    private final DMA dma;
 
     private boolean ime;
     private int imeScheduleCount;
@@ -48,6 +49,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         }
 
         reg = new Registers();
+        dma = new DMA(gb);
 
         ime = false;
         imeScheduleCount = 0;
@@ -82,6 +84,8 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
         }
 
+        dma.tick();
+
         if(imeScheduleCount > 0) {
             imeScheduleCount--;
             if(imeScheduleCount == 0) {
@@ -103,6 +107,10 @@ public class CPU extends ConnectedInternal implements Tickable {
 
         currInstr.step();
 
+    }
+
+    public DMA getDma() {
+        return dma;
     }
 
     public boolean isIme() {

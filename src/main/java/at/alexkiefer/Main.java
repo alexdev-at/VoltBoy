@@ -5,6 +5,7 @@ import at.alexkiefer.voltboy.components.ppu.fifo.Pixel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.concurrent.TimeUnit;
 import javax.swing.Timer;
 
 public class Main {
@@ -13,10 +14,16 @@ public class Main {
     private static final int SCREEN_HEIGHT = 144;
     private static final int PIXEL_SCALE = 5;
 
+    private static final long GAMEBOY_CLOCK_SPEED = 4194304L; // Hz
+    private static final long AVERAGE_CYCLES_PER_FRAME = 70224L; // Approximate
+
+    private static long lastFrameTime = System.nanoTime();
+    private static long accumulatedDelayNanos = 0L;
+
     private static int frameCount = 0;
     private static int fps = 0;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         VoltBoy gb = new VoltBoy();
 
         JFrame frame = new JFrame("VoltBoy");
@@ -43,9 +50,33 @@ public class Main {
         });
         timer.start();
 
-        while(true) {
-            gb.tick();
+        while (true) {
+            long currentTime = System.nanoTime();
+            long elapsedTimeNanos = currentTime - lastFrameTime;
+
+            long cyclesToExecute = (elapsedTimeNanos * GAMEBOY_CLOCK_SPEED) / 1_000_000_000L;
+            cyclesToExecute += accumulatedDelayNanos / (1_000_000_000L / GAMEBOY_CLOCK_SPEED);
+
+            cyclesToExecute = Math.min(cyclesToExecute, 2 * AVERAGE_CYCLES_PER_FRAME);
+            for (long i = 0; i < cyclesToExecute; i++) {
+                gb.tick();
+            }
+
             panel.repaint();
+
+            long targetFrameTimeNanos = 1_000_000_000L / 60L;
+            long actualFrameTimeNanos = System.nanoTime() - currentTime;
+            long delayNanos = targetFrameTimeNanos - actualFrameTimeNanos;
+            accumulatedDelayNanos += delayNanos;
+
+            if (delayNanos > 0) {
+                TimeUnit.NANOSECONDS.sleep(delayNanos);
+            } else {
+                // If behind schedule, reduce accumulated delay to avoid overcorrection
+                accumulatedDelayNanos = Math.max(0, accumulatedDelayNanos - targetFrameTimeNanos);
+            }
+
+            lastFrameTime = System.nanoTime();
         }
     }
 
