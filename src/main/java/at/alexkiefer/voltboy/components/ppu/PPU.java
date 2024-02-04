@@ -212,7 +212,7 @@ public class PPU extends ConnectedInternal implements Tickable {
         int ly = gb.getDataBus().readUnrestricted(0xFF44);
         int size = (gb.getDataBus().readUnrestricted(0xFF40) & BitUtils.M_TWO) == 0 ? 8 : 16;
 
-        if(x > 0 && (ly + 16) >= y && (ly + 16) < (y + size) && oamBuffer.size() < 10) {
+        if((ly + 16) >= y && (ly + 16) < (y + size) && oamBuffer.size() < 10) {
             oamBuffer.add(new OAMObject(x, y, size, oamIndex++, tileIndex, attributes));
         }
 
@@ -255,7 +255,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             } else if(bp == null) {
                 lcd[ly][lx++] = op;
             } else {
-                if(op.getColor() == 0b00) {
+                if(op.getColor() == -1) {
                     lcd[ly][lx++] = bp;
                 } else if(op.getBackgroundPriority() != 0 && bp.getColor() != 0b00) {
                     lcd[ly][lx++] = bp;

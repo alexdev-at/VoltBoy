@@ -109,6 +109,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
                 int color = (loBit | (hiBit << 1));
 
                 color = switch(color) {
+                    case 0b00 -> -1;
                     case 0b01 -> (palette & 0b1100) >> 2;
                     case 0b10 -> (palette & 0b110000) >> 4;
                     case 0b11 -> (palette & 0b11000000) >> 6;
@@ -124,6 +125,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
                 int color = (loBit | (hiBit << 1));
 
                 color = switch(color) {
+                    case 0b00 -> -1;
                     case 0b01 -> (palette & 0b1100) >> 2;
                     case 0b10 -> (palette & 0b110000) >> 4;
                     case 0b11 -> (palette & 0b11000000) >> 6;
@@ -136,7 +138,11 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
         fetcherX = (fetcherX + 1) & 0x1F;
 
-        fifo.fill(pixels);
+        if(current.getX() < 8) {
+            fifo.fillSize(pixels, 8 - (8 - current.getX()));
+        } else {
+            fifo.fill(pixels);
+        }
 
         current = null;
 

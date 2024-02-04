@@ -11,6 +11,22 @@ public class ObjectPixelFIFO extends FIFO {
         super(gb);
     }
 
+    public void fillSize(Pixel[] p, int effectiveSize) {
+        int startIndex = 8 - effectiveSize;
+
+        for(int i = 0; i < effectiveSize; i++) {
+            Pixel oldPixel = pixels[i];
+            Pixel newPixel = p[startIndex + i];
+            if(oldPixel == null || oldPixel.getColor() == 0b00) {
+                pixels[i] = newPixel;
+            } else {
+                pixels[i] = oldPixel;
+            }
+        }
+
+        size = effectiveSize;
+    }
+
     @Override
     public void fill(Pixel[] p) {
         for(int i = 0; i < 8; i++) {
