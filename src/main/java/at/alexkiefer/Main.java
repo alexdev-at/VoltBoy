@@ -75,7 +75,6 @@ public class Main {
 
             @Override
             public void keyReleased(KeyEvent e) {
-                System.out.println(e.getKeyChar());
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_W:
                         gb.getInputHandler().releaseJoypadUp();
