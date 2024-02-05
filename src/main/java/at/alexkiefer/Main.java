@@ -5,10 +5,12 @@ import at.alexkiefer.voltboy.components.ppu.fifo.Pixel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import javax.swing.Timer;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
 
@@ -36,10 +38,99 @@ public class Main {
         frame.setVisible(true);
         frame.setLocationRelativeTo(null);
 
-        while(true) {
-            gb.tick();
-            panel.repaint();
-        }
+        frame.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_W:
+                        gb.getInputHandler().pressJoypadUp();
+                        break;
+                    case KeyEvent.VK_S:
+                        gb.getInputHandler().pressJoypadDown();
+                        break;
+                    case KeyEvent.VK_A:
+                        gb.getInputHandler().pressJoypadLeft();
+                        break;
+                    case KeyEvent.VK_D:
+                        gb.getInputHandler().pressJoypadRight();
+                        break;
+                    case KeyEvent.VK_SPACE:
+                        gb.getInputHandler().pressSelect();
+                        break;
+                    case KeyEvent.VK_ENTER:
+                        gb.getInputHandler().pressStart();
+                        break;
+                    case KeyEvent.VK_LEFT:
+                        gb.getInputHandler().pressA();
+                        break;
+                    case KeyEvent.VK_RIGHT:
+                        gb.getInputHandler().pressB();
+                        break;
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                System.out.println(e.getKeyChar());
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_W:
+                        gb.getInputHandler().releaseJoypadUp();
+                        break;
+                    case KeyEvent.VK_S:
+                        gb.getInputHandler().releaseJoypadDown();
+                        break;
+                    case KeyEvent.VK_A:
+                        gb.getInputHandler().releaseJoypadLeft();
+                        break;
+                    case KeyEvent.VK_D:
+                        gb.getInputHandler().releaseJoypadRight();
+                        break;
+                    case KeyEvent.VK_SPACE:
+                        gb.getInputHandler().releaseSelect();
+                        break;
+                    case KeyEvent.VK_ENTER:
+                        gb.getInputHandler().releaseStart();
+                        break;
+                    case KeyEvent.VK_LEFT:
+                        gb.getInputHandler().releaseA();
+                        break;
+                    case KeyEvent.VK_RIGHT:
+                        gb.getInputHandler().releaseB();
+                        break;
+                }
+            }
+        });
+
+        frame.setFocusable(true);
+        frame.requestFocusInWindow();
+
+        AtomicReference<Double> delta = new AtomicReference<>((double) 0);
+
+        Runnable gameLogic = () -> {
+            int offset = 0;
+            if(delta.get() > 1) {
+                delta.updateAndGet(v -> v - 1);
+                offset++;
+            }
+            for(int i = 0; i < 17476 + offset; i++) {
+                gb.tick();
+            }
+            delta.updateAndGet(v -> v + 0.266666666666666);
+        };
+
+        Runnable rendering = panel::repaint;
+
+        ScheduledExecutorService gameLogicExecutor = Executors.newSingleThreadScheduledExecutor();
+
+        ScheduledExecutorService renderingExecutor = Executors.newSingleThreadScheduledExecutor();
+
+        gameLogicExecutor.scheduleAtFixedRate(gameLogic, 0, 1000 / 60, TimeUnit.MILLISECONDS);
+
+        renderingExecutor.scheduleAtFixedRate(rendering, 0, 1000 / 60, TimeUnit.MILLISECONDS);
 
     }
 
