@@ -239,29 +239,35 @@ public class PPU extends ConnectedInternal implements Tickable {
         if(objectPixelFetcher.getCurrent() == null && objectPixelFifo.getSize() > 0 && backgroundPixelFifo.getSize() > 0) {
 
             Pixel bp = backgroundPixelFifo.pop();
-            if((lcdc & BitUtils.M_ZERO) == 0) {
-                bp = null;
-            }
 
-            Pixel op = objectPixelFifo.pop();
-            if((lcdc & BitUtils.M_ONE) == 0) {
-                op = null;
-            }
+            if(bp != null) {
 
-            if(op == null && bp == null) {
-                lcd[ly][lx++] = new Pixel(0, 0, 0);
-            } else if(op == null) {
-                lcd[ly][lx++] = bp;
-            } else if(bp == null) {
-                lcd[ly][lx++] = op;
-            } else {
-                if(op.getColor() == -1) {
-                    lcd[ly][lx++] = bp;
-                } else if(op.getBackgroundPriority() != 0 && bp.getColor() != 0b00) {
-                    lcd[ly][lx++] = bp;
-                } else {
-                    lcd[ly][lx++] = op;
+                if((lcdc & BitUtils.M_ZERO) == 0) {
+                    bp = null;
                 }
+
+                Pixel op = objectPixelFifo.pop();
+
+                if((lcdc & BitUtils.M_ONE) == 0) {
+                    op = null;
+                }
+
+                if(op == null && bp == null) {
+                    lcd[ly][lx++] = new Pixel(0, 0, 0);
+                } else if(op == null) {
+                    lcd[ly][lx++] = bp;
+                } else if(bp == null) {
+                    lcd[ly][lx++] = op;
+                } else {
+                    if(op.getColor() == -1) {
+                        lcd[ly][lx++] = bp;
+                    } else if(op.getBackgroundPriority() != 0 && bp.getColor() != 0b00) {
+                        lcd[ly][lx++] = bp;
+                    } else {
+                        lcd[ly][lx++] = op;
+                    }
+                }
+
             }
 
             if((lcdc & BitUtils.M_FIVE) != 0) {
