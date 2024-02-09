@@ -40,6 +40,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
         if((gb.getDataBus().readUnrestricted(0xFF40) & BitUtils.M_ONE) == 0) {
             reset();
             gb.getPpu().getObjectPixelFifo().clear();
+            return;
         }
 
         switch(step) {

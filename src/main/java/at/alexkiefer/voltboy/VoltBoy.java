@@ -17,7 +17,7 @@ public class VoltBoy {
     private final Timer timer;
 
     public VoltBoy() {
-        cart = new Cartridge(this, "C:\\Users\\Alex\\Downloads\\numism_rom_sym_2023-12-24\\numism-oneatatime.gb");
+        cart = new Cartridge(this, "C:\\Users\\Alex\\IdeaProjects\\VoltBoy\\testroms\\dmg-acid2\\dmg-acid2.gb");
         dataBus = new DataBus(this);
         inputHandler = new InputHandler(this);
         cpu = new CPU(this);

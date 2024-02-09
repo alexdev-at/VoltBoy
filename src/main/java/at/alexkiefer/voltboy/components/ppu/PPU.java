@@ -113,10 +113,7 @@ public class PPU extends ConnectedInternal implements Tickable {
         int stat = gb.getDataBus().readUnrestricted(0xFF41);
         PPUMode oldMode = mode;
 
-        if(ly >= 144) {
-            backgroundPixelFetcher.resetWindowCounter();
-            mode = PPUMode.MODE_1;
-        } else {
+        if(ly <= 143) {
 
             if(dot == 80) {
                 mode = PPUMode.MODE_3;
@@ -133,6 +130,9 @@ public class PPU extends ConnectedInternal implements Tickable {
                 mode = PPUMode.MODE_2;
             }
 
+        } else if(ly == 144) {
+            backgroundPixelFetcher.resetWindowCounter();
+            mode = PPUMode.MODE_1;
         }
 
         switch(mode) {
@@ -223,11 +223,13 @@ public class PPU extends ConnectedInternal implements Tickable {
         int ly = gb.getDataBus().readUnrestricted(0xFF44);
         int lcdc = gb.getDataBus().readUnrestricted(0xFF40);
 
-        OAMObject obj = oamBuffer.isEmpty() ? null : oamBuffer.getFirst();
-        if(obj != null && obj.getX() <= lx + 8) {
-            oamBuffer.remove(obj);
-            objectPixelFetcher.reset();
-            objectPixelFetcher.setCurrent(obj);
+        if(!oamBuffer.isEmpty()) {
+            OAMObject obj = oamBuffer.getFirst();
+            if(obj.getX() <= lx + 8) {
+                oamBuffer.remove(obj);
+                objectPixelFetcher.reset();
+                objectPixelFetcher.setCurrent(obj);
+            }
         }
 
         if(objectPixelFetcher.getCurrent() != null && backgroundPixelFetcher.getStep() >= 6) {

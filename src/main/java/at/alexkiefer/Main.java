@@ -1,6 +1,7 @@
 package at.alexkiefer;
 
 import at.alexkiefer.voltboy.VoltBoy;
+import at.alexkiefer.voltboy.components.ppu.PPUMode;
 import at.alexkiefer.voltboy.components.ppu.fifo.Pixel;
 
 import javax.swing.*;
@@ -107,29 +108,10 @@ public class Main {
         frame.setFocusable(true);
         frame.requestFocusInWindow();
 
-        AtomicReference<Double> delta = new AtomicReference<>((double) 0);
-
-        Runnable gameLogic = () -> {
-            int offset = 0;
-            if(delta.get() > 1) {
-                delta.updateAndGet(v -> v - 1);
-                offset++;
-            }
-            for(int i = 0; i < 17476 + offset; i++) {
-                gb.tick();
-            }
-            delta.updateAndGet(v -> v + 0.266666666666666);
-        };
-
-        Runnable rendering = panel::repaint;
-
-        ScheduledExecutorService gameLogicExecutor = Executors.newSingleThreadScheduledExecutor();
-
-        ScheduledExecutorService renderingExecutor = Executors.newSingleThreadScheduledExecutor();
-
-        gameLogicExecutor.scheduleAtFixedRate(gameLogic, 0, 1000 / 60, TimeUnit.MILLISECONDS);
-
-        renderingExecutor.scheduleAtFixedRate(rendering, 0, 1000 / 60, TimeUnit.MILLISECONDS);
+        while(true) {
+            gb.tick();
+            panel.repaint();
+        }
 
     }
 
