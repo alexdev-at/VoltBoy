@@ -4,6 +4,12 @@ VoltBoy aims to be an m-cycle accurate GameBoy emulator implemented in Java
 
 # Test progress
 
+### dmg-acid2 (PPU)
+
+Passed
+
+![dmg-acid2 passed](https://i.imgur.com/dhQpZJQ.png)
+
 ### Blargg CPU Instructions
 | Test                     | Passed |
 |--------------------------|--------|
@@ -24,6 +30,6 @@ VoltBoy aims to be an m-cycle accurate GameBoy emulator implemented in Java
 
 Passed
 
-### Blargg Memory Timing
+### Blargg Memory Timing (1 & 2)
 
 Passed
