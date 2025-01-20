@@ -13,4 +13,12 @@ public class VoltBoy {
         cpu = new CPU(this);
     }
 
+    public MemoryBus getMemoryBus() {
+        return memoryBus;
+    }
+
+    public CPU getCpu() {
+        return cpu;
+    }
+
 }
