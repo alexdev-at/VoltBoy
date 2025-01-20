@@ -9,7 +9,7 @@ public class CPUFlagRegister extends CPURegister {
     }
 
     public void setZero(boolean condition) {
-        if(condition) {
+        if (condition) {
             value |= BitMasks.SEVEN;
         } else {
             value &= ~BitMasks.SEVEN;
@@ -21,7 +21,7 @@ public class CPUFlagRegister extends CPURegister {
     }
 
     public void setSubtraction(boolean condition) {
-        if(condition) {
+        if (condition) {
             value |= BitMasks.SIX;
         } else {
             value &= ~BitMasks.SIX;
@@ -32,8 +32,8 @@ public class CPUFlagRegister extends CPURegister {
         return (value & BitMasks.SIX) != 0;
     }
 
-    public void isHalfCarry(boolean condition) {
-        if(condition) {
+    public void setHalfCarry(boolean condition) {
+        if (condition) {
             value |= BitMasks.FIVE;
         } else {
             value &= ~BitMasks.FIVE;
@@ -45,7 +45,7 @@ public class CPUFlagRegister extends CPURegister {
     }
 
     public void setCarry(boolean condition) {
-        if(condition) {
+        if (condition) {
             value |= BitMasks.FOUR;
         } else {
             value &= ~BitMasks.FOUR;
