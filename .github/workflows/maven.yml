@@ -18,7 +18,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         java-version: '23'
-        distribution: 'openjdk'
+        distribution: 'temurin'
         cache: maven
         
     - name: Build with Maven
