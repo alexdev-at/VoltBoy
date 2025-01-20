@@ -1,4 +1,4 @@
-name: Java Maven Windows
+name: Java Maven
 
 on:
   push:
