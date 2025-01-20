@@ -1,10 +1,15 @@
 package at.alexkiefer.voltboy.core.memory;
 
+import at.alexkiefer.voltboy.core.VoltBoy;
+
 public class MemoryBus {
+
+    private final VoltBoy gb;
 
     private final int[] memory;
 
-    public MemoryBus() {
+    public MemoryBus(VoltBoy gb) {
+        this.gb = gb;
         memory = new int[0x10000];
     }
 
