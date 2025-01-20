@@ -3,7 +3,7 @@ package at.alexkiefer.voltboy.core.cpu.register;
 public class CPURegisters {
 
     public final CPURegister A;
-    public final CPURegister F;
+    public final CPUFlagRegister F;
     public final CPURegister B;
     public final CPURegister C;
     public final CPURegister D;
