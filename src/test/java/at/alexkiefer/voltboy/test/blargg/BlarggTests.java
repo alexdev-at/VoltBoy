@@ -1,7 +1,6 @@
 package at.alexkiefer.voltboy.test.blargg;
 
 import at.alexkiefer.voltboy.core.VoltBoy;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -21,11 +20,6 @@ public class BlarggTests {
     public BlarggTests() throws URISyntaxException {
     }
 
-    @BeforeEach
-    public void beforeEach() {
-        gb = new VoltBoy();
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {
             "01-special.gb",
@@ -42,7 +36,7 @@ public class BlarggTests {
     })
     public void testCpu_withBlarggTestroms_shouldReturnStringBufferWithPassed(String romPath) {
 
-        assertDoesNotThrow(() -> gb.loadRom(resourcePath.resolve(romPath).toString()));
+        assertDoesNotThrow(() -> gb = new VoltBoy(resourcePath.resolve(romPath).toString()));
 
         boolean run = true;
 
