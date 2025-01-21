@@ -28,7 +28,10 @@ public class CPU extends ConnectedInternal implements Tickable {
     private int IR;
 
     private boolean IME;
+    private boolean currentInstructionPrefixed;
     private int imeDelayTicks;
+    private boolean halt;
+    private boolean haltBug;
 
     private int adjustment;
 
@@ -586,6 +589,15 @@ public class CPU extends ConnectedInternal implements Tickable {
     @Override
     public void tick() {
 
+        if(halt) {
+            int interrupts = memoryBus.read(0xFFFF) & memoryBus.read(0xFF0F);
+            if(interrupts != 0) {
+                halt = false;
+            } else {
+                return;
+            }
+        }
+
         if(imeDelayTicks > 0) {
             imeDelayTicks--;
             if(imeDelayTicks == 0) {
@@ -593,7 +605,14 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
         }
 
-        //System.out.println(HexUtils.toHex(IR) + " " + currentInstructionCycle);
+        if (currentInstructionCycle == 0) {
+            handleInterrupts();
+            if(haltBug) {
+                haltBug = false;
+                registers.PC.dec();
+            }
+        }
+
         currentInstruction[currentInstructionCycle++].execute();
 
     }
@@ -602,12 +621,46 @@ public class CPU extends ConnectedInternal implements Tickable {
         IR = memoryBus.read(registers.PC.getAndInc());
         currentInstruction = instructions[IR];
         currentInstructionCycle = 0;
+        currentInstructionPrefixed = false;
     }
 
     private void cbFetch() {
         IR = memoryBus.read(registers.PC.getAndInc());
         currentInstruction = cbInstructions[IR];
         currentInstructionCycle = 0;
+        currentInstructionPrefixed = true;
+    }
+
+    private void handleInterrupts() {
+
+        int interrupts = memoryBus.read(0xFFFF) & memoryBus.read(0xFF0F);
+
+        if(IME && !currentInstructionPrefixed) {
+
+            if((interrupts & BitMasks.ZERO) != 0) {
+                IME = false;
+                currentInstruction = isrInstructions[0x00];
+                memoryBus.write(0xFF0F, interrupts & ~BitMasks.ZERO);
+            } else if((interrupts & BitMasks.ONE) != 0) {
+                IME = false;
+                currentInstruction = isrInstructions[0x01];
+                memoryBus.write(0xFF0F, interrupts & ~BitMasks.ONE);
+            } else if((interrupts & BitMasks.TWO) != 0) {
+                IME = false;
+                currentInstruction = isrInstructions[0x02];
+                memoryBus.write(0xFF0F, interrupts & ~BitMasks.TWO);
+            } else if((interrupts & BitMasks.THREE) != 0) {
+                IME = false;
+                currentInstruction = isrInstructions[0x03];
+                memoryBus.write(0xFF0F, interrupts & ~BitMasks.THREE);
+            } else if((interrupts & BitMasks.FOUR) != 0) {
+                IME = false;
+                currentInstruction = isrInstructions[0x04];
+                memoryBus.write(0xFF0F, interrupts & ~BitMasks.FOUR);
+            }
+
+        }
+
     }
 
     // region 8-Bit Loads
@@ -2317,8 +2370,19 @@ public class CPU extends ConnectedInternal implements Tickable {
 
     private InstructionCycle[] HALT() {
         return new InstructionCycle[] {
-                // TODO
-                this::fetch
+                () -> {
+                    if(IME) {
+                        halt = true;
+                    } else {
+                        int interrupts = memoryBus.read(0xFFFF) & memoryBus.read(0xFF0F) & 0x1F;
+                        if(interrupts == 0) {
+                            halt = true;
+                        } else {
+                            haltBug = true;
+                        }
+                    }
+                    fetch();
+                }
         };
     }
 

@@ -39,4 +39,12 @@ public abstract class AddressSpace extends ConnectedInternal {
         memory[addr - start] = value;
     }
 
+    public int readUnrestricted(int addr) {
+        return memory[addr - start];
+    }
+
+    public void writeUnrestricted(int addr, int value) {
+        memory[addr - start] = value;
+    }
+
 }

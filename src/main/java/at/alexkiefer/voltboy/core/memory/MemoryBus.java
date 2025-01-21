@@ -54,6 +54,29 @@ public class MemoryBus extends ConnectedInternal {
         }
     }
 
+    public int readUnrestricted(int addr) {
+        addr &= 0xFFFF;
+        for (AddressSpace addressSpace : addressSpaces) {
+            if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
+                return addressSpace.readUnrestricted(addr);
+            }
+        }
+        return 0xFF;
+    }
+
+    public void writeUnrestricted(int addr, int value) {
+        if (addr == 0xFF01) {
+            serialBuffer.append((char) value);
+        }
+        addr &= 0xFFFF;
+        for (AddressSpace addressSpace : addressSpaces) {
+            if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
+                addressSpace.writeUnrestricted(addr, value & 0xFF);
+                return;
+            }
+        }
+    }
+
     public StringBuffer getSerialBuffer() {
         return serialBuffer;
     }

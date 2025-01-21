@@ -1,6 +1,7 @@
 package at.alexkiefer.voltboy.test.blargg;
 
 import at.alexkiefer.voltboy.core.VoltBoy;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -23,7 +24,7 @@ public class BlarggTests {
     @ParameterizedTest
     @ValueSource(strings = {
             "01-special.gb",
-            //"02-interrupts.gb", // TODO
+            "02-interrupts.gb",
             "03-op sp,hl.gb",
             "04-op r,imm.gb",
             "05-op rp.gb",
@@ -48,6 +49,11 @@ public class BlarggTests {
             }
         }
 
+    }
+
+    @AfterEach
+    public void logSerialBuffer() {
+        System.out.println(gb.getMemoryBus().getSerialBuffer());
     }
 
 }
