@@ -9,10 +9,11 @@ import java.io.IOException;
 public class VoltBoy implements Tickable {
 
     private final MemoryBus memoryBus;
-    private Cartridge cartridge;
+    private final Cartridge cartridge;
     private final CPU cpu;
 
-    public VoltBoy() {
+    public VoltBoy(String romPath) throws IOException {
+        cartridge = new Cartridge(this, romPath);
         memoryBus = new MemoryBus(this);
         cpu = new CPU(this);
     }
@@ -27,10 +28,6 @@ public class VoltBoy implements Tickable {
 
     public Cartridge getCartridge() {
         return cartridge;
-    }
-
-    public void loadRom(String romPath) throws IOException {
-        cartridge = new Cartridge(this, romPath);
     }
 
     @Override

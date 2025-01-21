@@ -1,5 +1,6 @@
 package at.alexkiefer.voltboy.core.cpu;
 
+import at.alexkiefer.voltboy.core.ConnectedInternal;
 import at.alexkiefer.voltboy.core.Tickable;
 import at.alexkiefer.voltboy.core.VoltBoy;
 import at.alexkiefer.voltboy.core.cpu.instruction.InstructionCycle;
@@ -11,9 +12,8 @@ import at.alexkiefer.voltboy.util.BitMasks;
 
 import java.util.function.Predicate;
 
-public class CPU implements Tickable {
+public class CPU extends ConnectedInternal implements Tickable {
 
-    private final VoltBoy gb;
     private final MemoryBus memoryBus;
 
     private final CPURegisters registers;
@@ -33,8 +33,7 @@ public class CPU implements Tickable {
     private int adjustment;
 
     public CPU(VoltBoy gb) {
-
-        this.gb = gb;
+        super(gb);
         memoryBus = gb.getMemoryBus();
         registers = new CPURegisters();
 
