@@ -3,10 +3,13 @@ package at.alexkiefer.voltboy.core.cpu;
 import at.alexkiefer.voltboy.core.Tickable;
 import at.alexkiefer.voltboy.core.VoltBoy;
 import at.alexkiefer.voltboy.core.cpu.instruction.InstructionCycle;
+import at.alexkiefer.voltboy.core.cpu.register.CPUFlagRegister;
 import at.alexkiefer.voltboy.core.cpu.register.CPURegister;
 import at.alexkiefer.voltboy.core.cpu.register.CPURegisters;
 import at.alexkiefer.voltboy.core.memory.MemoryBus;
 import at.alexkiefer.voltboy.util.BitMasks;
+
+import java.util.function.Predicate;
 
 public class CPU implements Tickable {
 
@@ -27,20 +30,42 @@ public class CPU implements Tickable {
     private boolean IME;
     private int imeDelayTicks;
 
+    private int adjustment;
+
     public CPU(VoltBoy gb) {
 
         this.gb = gb;
         memoryBus = gb.getMemoryBus();
         registers = new CPURegisters();
 
-        IR = memoryBus.read(registers.PC.getAndInc());
-
         initInstructions();
+
+        fetch();
 
     }
 
     public CPURegisters getRegisters() {
         return registers;
+    }
+
+    public InstructionCycle[] getCurrentInstruction() {
+        return currentInstruction;
+    }
+
+    public int getCurrentInstructionCycle() {
+        return currentInstructionCycle;
+    }
+
+    public InstructionCycle[][] getInstructions() {
+        return instructions;
+    }
+
+    public InstructionCycle[][] getCbInstructions() {
+        return cbInstructions;
+    }
+
+    public InstructionCycle[][] getIsrInstructions() {
+        return isrInstructions;
     }
 
     public void initInstructions() {
@@ -78,7 +103,7 @@ public class CPU implements Tickable {
         instructions[0x1D] = DEC_r8(registers.E);
         instructions[0x1E] = LD_r8_u8(registers.E);
         instructions[0x1F] = RRA();
-        instructions[0x20] = JR_i8_cond(!registers.F.isZero());
+        instructions[0x20] = JR_i8_cond((f) -> !f.isZero());
         instructions[0x21] = LD_r16_u16(registers.H, registers.L);
         instructions[0x22] = LD__HLI__A();
         instructions[0x23] = INC_r16(registers.H, registers.L);
@@ -86,7 +111,7 @@ public class CPU implements Tickable {
         instructions[0x25] = DEC_r8(registers.H);
         instructions[0x26] = LD_r8_u8(registers.H);
         instructions[0x27] = DAA();
-        instructions[0x28] = JR_i8_cond(registers.F.isZero());
+        instructions[0x28] = JR_i8_cond(CPUFlagRegister::isZero);
         instructions[0x29] = ADD_HL_r16(registers.H, registers.L);
         instructions[0x2A] = LD_A__HLI_();
         instructions[0x2B] = DEC_r16(registers.H, registers.L);
@@ -94,7 +119,7 @@ public class CPU implements Tickable {
         instructions[0x2D] = DEC_r8(registers.L);
         instructions[0x2E] = LD_r8_u8(registers.L);
         instructions[0x2F] = CPL();
-        instructions[0x30] = JR_i8_cond(!registers.F.isCarry());
+        instructions[0x30] = JR_i8_cond((f) -> !f.isCarry());
         instructions[0x31] = LD_SP_u16();
         instructions[0x32] = LD__HLD__A();
         instructions[0x33] = INC_SP();
@@ -102,7 +127,7 @@ public class CPU implements Tickable {
         instructions[0x35] = DEC__HL_();
         instructions[0x36] = LD__HL__u8();
         instructions[0x37] = SCF();
-        instructions[0x38] = JR_i8_cond(registers.F.isCarry());
+        instructions[0x38] = JR_i8_cond(CPUFlagRegister::isCarry);
         instructions[0x39] = ADD_HL_SP();
         instructions[0x3A] = LD_A__HLD_();
         instructions[0x3B] = DEC_SP();
@@ -238,33 +263,33 @@ public class CPU implements Tickable {
         instructions[0xBD] = CP_r8(registers.L);
         instructions[0xBE] = CP__HL_();
         instructions[0xBF] = CP_r8(registers.A);
-        instructions[0xC0] = RET_cond(!registers.F.isZero());
+        instructions[0xC0] = RET_cond((f) -> !f.isZero());
         instructions[0xC1] = POP_r16(registers.B, registers.C);
-        instructions[0xC2] = JP_u16_cond(!registers.F.isZero());
+        instructions[0xC2] = JP_u16_cond((f) -> !f.isZero());
         instructions[0xC3] = JP_u16();
-        instructions[0xC4] = CALL_u16_cond(!registers.F.isZero());
+        instructions[0xC4] = CALL_u16_cond((f) -> !f.isZero());
         instructions[0xC5] = PUSH_r16(registers.B, registers.C);
         instructions[0xC6] = ADD_u8();
         instructions[0xC7] = RST(0x00);
-        instructions[0xC8] = RET_cond(registers.F.isZero());
+        instructions[0xC8] = RET_cond(CPUFlagRegister::isZero);
         instructions[0xC9] = RET();
-        instructions[0xCA] = JP_u16_cond(registers.F.isZero());
+        instructions[0xCA] = JP_u16_cond(CPUFlagRegister::isZero);
         instructions[0xCB] = CB();
-        instructions[0xCC] = CALL_u16_cond(registers.F.isZero());
+        instructions[0xCC] = CALL_u16_cond(CPUFlagRegister::isZero);
         instructions[0xCD] = CALL_u16();
         instructions[0xCE] = ADC_u8();
         instructions[0xCF] = RST(0x08);
-        instructions[0xD0] = RET_cond(!registers.F.isCarry());
+        instructions[0xD0] = RET_cond((f) -> !f.isCarry());
         instructions[0xD1] = POP_r16(registers.D, registers.E);
-        instructions[0xD2] = JP_u16_cond(!registers.F.isCarry());
-        instructions[0xD4] = CALL_u16_cond(!registers.F.isCarry());
+        instructions[0xD2] = JP_u16_cond((f) -> !f.isCarry());
+        instructions[0xD4] = CALL_u16_cond((f) -> !f.isCarry());
         instructions[0xD5] = PUSH_r16(registers.D, registers.E);
         instructions[0xD6] = SUB_u8();
         instructions[0xD7] = RST(0x10);
-        instructions[0xD8] = RET_cond(registers.F.isCarry());
+        instructions[0xD8] = RET_cond(CPUFlagRegister::isCarry);
         instructions[0xD9] = RETI();
-        instructions[0xDA] = JP_u16_cond(registers.F.isCarry());
-        instructions[0xDC] = CALL_u16_cond(registers.F.isCarry());
+        instructions[0xDA] = JP_u16_cond(CPUFlagRegister::isCarry);
+        instructions[0xDC] = CALL_u16_cond(CPUFlagRegister::isCarry);
         instructions[0xDE] = SBC_u8();
         instructions[0xDF] = RST(0x18);
         instructions[0xE0] = LDH__u8__A();
@@ -569,6 +594,7 @@ public class CPU implements Tickable {
             }
         }
 
+        //System.out.println(HexUtils.toHex(IR) + " " + currentInstructionCycle);
         currentInstruction[currentInstructionCycle++].execute();
 
     }
@@ -576,18 +602,18 @@ public class CPU implements Tickable {
     private void fetch() {
         IR = memoryBus.read(registers.PC.getAndInc());
         currentInstruction = instructions[IR];
-        currentInstructionCycle = 1;
+        currentInstructionCycle = 0;
     }
 
     private void cbFetch() {
         IR = memoryBus.read(registers.PC.getAndInc());
         currentInstruction = cbInstructions[IR];
-        currentInstructionCycle = 1;
+        currentInstructionCycle = 0;
     }
 
     // region 8-Bit Loads
 
-    private InstructionCycle[] LD_r8_r8(CPURegister source, CPURegister target) {
+    private InstructionCycle[] LD_r8_r8(CPURegister target, CPURegister source) {
         return new InstructionCycle[] {
                 () -> {
                     target.setValue(source.getValue());
@@ -611,7 +637,7 @@ public class CPU implements Tickable {
     private InstructionCycle[] LD_r8__HL_(CPURegister target) {
         return new InstructionCycle[] {
                 () -> {
-                    registers.Z.setValue(registers.getHLValue());
+                    registers.Z.setValue(memoryBus.read(registers.getHLValue()));
                 },
                 () -> {
                     target.setValue(registers.Z.getValue());
@@ -884,7 +910,7 @@ public class CPU implements Tickable {
     private InstructionCycle[] LD_HL_SPpi8() {
         return new InstructionCycle[] {
                 () -> {
-                    registers.Z.setValue(memoryBus.read(registers.SP.getAndInc()));
+                    registers.Z.setValue(memoryBus.read(registers.PC.getAndInc()));
                 },
                 () -> {
                     int a = registers.SP.getValue() & 0xFF;
@@ -894,11 +920,18 @@ public class CPU implements Tickable {
                     registers.F.setZero(false);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(isHalfCarry(a, b, c, result));
-                    registers.F.setCarry(result > 0xFF);
+                    registers.F.setCarry(a + registers.Z.getValue() > 0xFF);
                     registers.L.setValue(result);
+                    if(result > 0xFF) {
+                        adjustment = 1;
+                    } else if(result < 0x00) {
+                        adjustment = -1;
+                    } else {
+                        adjustment = 0;
+                    }
                 },
                 () -> {
-                    registers.H.setValue((registers.SP.getValue() >> 8) + ((registers.Z.getValue() & BitMasks.SEVEN >> 7)) + (registers.F.isCarry() ? 1 : 0));
+                    registers.H.setValue((registers.SP.getValue() >> 8) + adjustment);
                     fetch();
                 }
         };
@@ -1193,13 +1226,14 @@ public class CPU implements Tickable {
     private InstructionCycle[] INC_r8(CPURegister source) {
         return new InstructionCycle[] {
                 () -> {
-                    int a = registers.A.getValue();
+                    int a = source.getValue();
                     int b = 1;
                     int c = 0;
                     int result = a + b;
                     registers.F.setZero((result & 0xFF) == 0);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(isHalfCarry(a, b, c, result));
+                    source.setValue(result);
                     fetch();
                 }
         };
@@ -1214,7 +1248,7 @@ public class CPU implements Tickable {
                     int a = registers.Z.getValue();
                     int b = 1;
                     int c = 0;
-                    int result = a - b;
+                    int result = a + b;
                     registers.F.setZero((result & 0xFF) == 0);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(isHalfCarry(a, b, c, result));
@@ -1227,13 +1261,14 @@ public class CPU implements Tickable {
     private InstructionCycle[] DEC_r8(CPURegister source) {
         return new InstructionCycle[] {
                 () -> {
-                    int a = registers.A.getValue();
+                    int a = source.getValue();
                     int b = 1;
                     int c = 0;
                     int result = a - b;
                     registers.F.setZero((result & 0xFF) == 0);
                     registers.F.setSubtraction(true);
                     registers.F.setHalfCarry(isHalfCarry(a, b, c, result));
+                    source.setValue(result);
                     fetch();
                 }
         };
@@ -1336,7 +1371,7 @@ public class CPU implements Tickable {
                 () -> {
                     int a = registers.A.getValue();
                     int b = registers.Z.getValue();
-                    int result = a ^ b;
+                    int result = a | b;
                     registers.F.setZero((result & 0xFF) == 0);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(false);
@@ -1355,7 +1390,7 @@ public class CPU implements Tickable {
                 () -> {
                     int a = registers.A.getValue();
                     int b = registers.Z.getValue();
-                    int result = a ^ b;
+                    int result = a | b;
                     registers.F.setZero((result & 0xFF) == 0);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(false);
@@ -1390,7 +1425,7 @@ public class CPU implements Tickable {
                 () -> {
                     int a = registers.A.getValue();
                     int b = registers.Z.getValue();
-                    int result = a | b;
+                    int result = a ^ b;
                     registers.F.setZero((result & 0xFF) == 0);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(false);
@@ -1409,7 +1444,7 @@ public class CPU implements Tickable {
                 () -> {
                     int a = registers.A.getValue();
                     int b = registers.Z.getValue();
-                    int result = a | b;
+                    int result = a ^ b;
                     registers.F.setZero((result & 0xFF) == 0);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(false);
@@ -1489,17 +1524,15 @@ public class CPU implements Tickable {
                     if (low.incAndGet() == 0x00) {
                         high.inc();
                     }
-                    fetch();
-                }
+                },
+                this::fetch
         };
     }
 
     private InstructionCycle[] INC_SP() {
         return new InstructionCycle[] {
-                () -> {
-                    registers.SP.inc();
-                    fetch();
-                }
+                registers.SP::inc,
+                this::fetch
         };
     }
 
@@ -1509,17 +1542,15 @@ public class CPU implements Tickable {
                     if (low.decAndGet() == 0xFF) {
                         high.dec();
                     }
-                    fetch();
-                }
+                },
+                this::fetch
         };
     }
 
     private InstructionCycle[] DEC_SP() {
         return new InstructionCycle[] {
-                () -> {
-                    registers.SP.dec();
-                    fetch();
-                }
+                registers.SP::dec,
+                this::fetch
         };
     }
 
@@ -1588,11 +1619,18 @@ public class CPU implements Tickable {
                     registers.F.setZero(false);
                     registers.F.setSubtraction(false);
                     registers.F.setHalfCarry(isHalfCarry(a, b, c, result));
-                    registers.F.setCarry(result > 0xFF);
+                    registers.F.setCarry(a + registers.Z.getValue() > 0xFF);
                     registers.Z.setValue(result);
+                    if(result > 0xFF) {
+                        adjustment = 1;
+                    } else if(result < 0x00) {
+                        adjustment = -1;
+                    } else {
+                        adjustment = 0;
+                    }
                 },
                 () -> {
-                    registers.W.setValue((registers.SP.getValue() >> 8) + ((registers.Z.getValue() & BitMasks.SEVEN >> 7)) + (registers.F.isCarry() ? 1 : 0));
+                    registers.W.setValue((registers.SP.getValue() >> 8) + adjustment);
                 },
                 () -> {
                     registers.SP.setValue(registers.getWZValue());
@@ -2054,11 +2092,12 @@ public class CPU implements Tickable {
         return new InstructionCycle[] {
                 () -> {
                     registers.PC.setValue(registers.getHLValue());
-                },
+                    fetch();
+                }
         };
     }
 
-    private InstructionCycle[] JP_u16_cond(boolean condition) {
+    private InstructionCycle[] JP_u16_cond(Predicate<CPUFlagRegister> predicate) {
         return new InstructionCycle[] {
                 () -> {
                     registers.Z.setValue(memoryBus.read(registers.PC.getAndInc()));
@@ -2067,7 +2106,7 @@ public class CPU implements Tickable {
                     registers.W.setValue(memoryBus.read(registers.PC.getAndInc()));
                 },
                 () -> {
-                    if (!condition) {
+                    if (!predicate.test(registers.F)) {
                         fetch();
                         return;
                     }
@@ -2087,11 +2126,12 @@ public class CPU implements Tickable {
                     int b = (byte) registers.Z.getValue();
                     int result = a + b;
                     registers.Z.setValue(result);
-                    int adjustment = 0;
-                    if (result > 0xFF && (registers.Z.getValue() & BitMasks.SEVEN) == 0) {
+                    if(result > 0xFF) {
                         adjustment = 1;
-                    } else if(result <= 0xFF && (registers.Z.getValue() & BitMasks.SEVEN) != 0) {
+                    } else if(result < 0x00) {
                         adjustment = -1;
+                    } else {
+                        adjustment = 0;
                     }
                     registers.W.setValue((registers.PC.getValue() >> 8) + adjustment);
                 },
@@ -2102,13 +2142,13 @@ public class CPU implements Tickable {
         };
     }
 
-    private InstructionCycle[] JR_i8_cond(boolean condition) {
+    private InstructionCycle[] JR_i8_cond(Predicate<CPUFlagRegister> predicate) {
         return new InstructionCycle[] {
                 () -> {
                     registers.Z.setValue(memoryBus.read(registers.PC.getAndInc()));
                 },
                 () -> {
-                    if (!condition) {
+                    if (!predicate.test(registers.F)) {
                         fetch();
                         return;
                     }
@@ -2116,11 +2156,12 @@ public class CPU implements Tickable {
                     int b = (byte) registers.Z.getValue();
                     int result = a + b;
                     registers.Z.setValue(result);
-                    int adjustment = 0;
-                    if (result > 0xFF && (registers.Z.getValue() & BitMasks.SEVEN) == 0) {
+                    if(result > 0xFF) {
                         adjustment = 1;
-                    } else if(result <= 0xFF && (registers.Z.getValue() & BitMasks.SEVEN) != 0) {
+                    } else if(result < 0x00) {
                         adjustment = -1;
+                    } else {
+                        adjustment = 0;
                     }
                     registers.W.setValue((registers.PC.getValue() >> 8) + adjustment);
                 },
@@ -2144,14 +2185,14 @@ public class CPU implements Tickable {
                     memoryBus.write(registers.SP.getAndDec(), registers.PC.getValue() >> 8);
                 },
                 () -> {
-                    memoryBus.write(registers.SP.getAndDec(), registers.PC.getValue() & 0xFF);
+                    memoryBus.write(registers.SP.getValue(), registers.PC.getValue() & 0xFF);
                     registers.PC.setValue(registers.getWZValue());
                 },
                 this::fetch
         };
     }
 
-    private InstructionCycle[] CALL_u16_cond(boolean condition) {
+    private InstructionCycle[] CALL_u16_cond(Predicate<CPUFlagRegister> predicate) {
         return new InstructionCycle[] {
                 () -> {
                     registers.Z.setValue(memoryBus.read(registers.PC.getAndInc()));
@@ -2160,7 +2201,7 @@ public class CPU implements Tickable {
                     registers.W.setValue(memoryBus.read(registers.PC.getAndInc()));
                 },
                 () -> {
-                    if (!condition) {
+                    if (!predicate.test(registers.F)) {
                         fetch();
                         return;
                     }
@@ -2170,7 +2211,7 @@ public class CPU implements Tickable {
                     memoryBus.write(registers.SP.getAndDec(), registers.PC.getValue() >> 8);
                 },
                 () -> {
-                    memoryBus.write(registers.SP.getAndDec(), registers.PC.getValue() & 0xFF);
+                    memoryBus.write(registers.SP.getValue(), registers.PC.getValue() & 0xFF);
                     registers.PC.setValue(registers.getWZValue());
                 },
                 this::fetch
@@ -2192,13 +2233,13 @@ public class CPU implements Tickable {
         };
     }
 
-    private InstructionCycle[] RET_cond(boolean condition) {
+    private InstructionCycle[] RET_cond(Predicate<CPUFlagRegister> predicate) {
         return new InstructionCycle[] {
                 () -> {
                     // IDLE -> https://gist.github.com/SonoSooS/c0055300670d678b5ae8433e20bea595#ret-cc
                 },
                 () -> {
-                    if (!condition) {
+                    if (!predicate.test(registers.F)) {
                         fetch();
                         return;
                     }
@@ -2238,7 +2279,7 @@ public class CPU implements Tickable {
                     memoryBus.write(registers.SP.getAndDec(), registers.PC.getValue() >> 8);
                 },
                 () -> {
-                    memoryBus.write(registers.SP.getAndDec(), registers.PC.getValue() & 0xFF);
+                    memoryBus.write(registers.SP.getValue(), registers.PC.getValue() & 0xFF);
                     registers.PC.setValue(vector);
                 },
                 this::fetch
