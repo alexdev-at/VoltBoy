@@ -3,7 +3,7 @@ package at.alexkiefer.voltboy.core.cpu.register;
 public class CPURegister {
 
     protected int value;
-    protected final int mask;
+    protected int mask;
 
     public CPURegister(CPURegisterWidth registerWidth, int value) {
         mask = registerWidth == CPURegisterWidth.EIGHT_BIT ? 0xFF : 0xFFFF;

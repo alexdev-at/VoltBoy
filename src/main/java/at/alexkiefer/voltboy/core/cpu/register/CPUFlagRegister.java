@@ -6,6 +6,7 @@ public class CPUFlagRegister extends CPURegister {
 
     public CPUFlagRegister(int value) {
         super(CPURegisterWidth.EIGHT_BIT, value);
+        mask = 0b1111_0000;
     }
 
     public void setZero(boolean condition) {

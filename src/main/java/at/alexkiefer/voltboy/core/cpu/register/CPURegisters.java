@@ -16,18 +16,18 @@ public class CPURegisters {
     public final CPURegister PC;
 
     public CPURegisters() {
-        A = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
-        F = new CPUFlagRegister(0x00);
+        A = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x01);
+        F = new CPUFlagRegister(0xB0);
         B = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
-        C = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
+        C = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x13);
         D = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
-        E = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
-        H = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
-        L = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
+        E = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0xD8);
+        H = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x01);
+        L = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x4D);
         W = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
         Z = new CPURegister(CPURegisterWidth.EIGHT_BIT, 0x00);
-        SP = new CPURegister(CPURegisterWidth.SIXTEEN_BIT, 0x00);
-        PC = new CPURegister(CPURegisterWidth.SIXTEEN_BIT, 0x00);
+        SP = new CPURegister(CPURegisterWidth.SIXTEEN_BIT, 0xFFFE);
+        PC = new CPURegister(CPURegisterWidth.SIXTEEN_BIT, 0x0100);
     }
 
     public void setAFValue(int value) {
@@ -47,6 +47,7 @@ public class CPURegisters {
     public int getBCValue() {
         return (B.value << 8) | C.value;
     }
+
     public void setDEValue(int value) {
         D.setValue(value >> 8);
         E.setValue(value & 0xFF);
@@ -55,6 +56,7 @@ public class CPURegisters {
     public int getDEValue() {
         return (D.value << 8) | E.value;
     }
+
     public void setHLValue(int value) {
         H.setValue(value >> 8);
         L.setValue(value & 0xFF);
@@ -63,6 +65,7 @@ public class CPURegisters {
     public int getHLValue() {
         return (H.value << 8) | L.value;
     }
+
     public void setWZValue(int value) {
         W.setValue(value >> 8);
         Z.setValue(value & 0xFF);

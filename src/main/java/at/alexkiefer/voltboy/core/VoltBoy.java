@@ -3,7 +3,7 @@ package at.alexkiefer.voltboy.core;
 import at.alexkiefer.voltboy.core.cpu.CPU;
 import at.alexkiefer.voltboy.core.memory.MemoryBus;
 
-public class VoltBoy {
+public class VoltBoy implements Tickable {
 
     private final MemoryBus memoryBus;
     private final CPU cpu;
@@ -19,6 +19,11 @@ public class VoltBoy {
 
     public CPU getCpu() {
         return cpu;
+    }
+
+    @Override
+    public void tick() {
+        cpu.tick();
     }
 
 }

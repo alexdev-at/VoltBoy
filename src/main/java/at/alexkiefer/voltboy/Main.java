@@ -7,6 +7,9 @@ public class Main {
     public static void main(String[] args) {
 
         VoltBoy gb = new VoltBoy();
+        while (true) {
+            gb.tick();
+        }
 
     }
 
