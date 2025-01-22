@@ -33,7 +33,7 @@ public class MemoryBus extends ConnectedInternal {
 
     public int read(int addr) {
         if (gb.getDmaController().isActive() && (addr < 0xFF80 || addr > 0xFFFE)) {
-            return dataBus;
+            return 0xFF;
         }
         addr &= 0xFFFF;
         for (AddressSpace addressSpace : addressSpaces) {
@@ -55,7 +55,6 @@ public class MemoryBus extends ConnectedInternal {
         for (AddressSpace addressSpace : addressSpaces) {
             if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
                 addressSpace.write(addr, value & 0xFF);
-                dataBus = value;
                 return;
             }
         }
@@ -79,7 +78,6 @@ public class MemoryBus extends ConnectedInternal {
         for (AddressSpace addressSpace : addressSpaces) {
             if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
                 addressSpace.writeUnrestricted(addr, value & 0xFF);
-                dataBus = value;
                 return;
             }
         }
