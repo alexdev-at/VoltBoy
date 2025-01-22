@@ -32,7 +32,7 @@ public class MemoryBus extends ConnectedInternal {
     }
 
     public int read(int addr) {
-        if (gb.getDmaController().isActive()) {
+        if (gb.getDmaController().isActive() && (addr < 0xFF80 || addr > 0xFFFE)) {
             return dataBus;
         }
         addr &= 0xFFFF;
@@ -48,7 +48,7 @@ public class MemoryBus extends ConnectedInternal {
         if (addr == 0xFF01) {
             serialBuffer.append((char) value);
         }
-        if (gb.getDmaController().isActive()) {
+        if (gb.getDmaController().isActive() && (addr < 0xFF80 || addr > 0xFFFE)) {
             return;
         }
         addr &= 0xFFFF;
