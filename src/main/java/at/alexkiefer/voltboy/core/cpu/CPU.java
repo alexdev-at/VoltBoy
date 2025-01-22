@@ -598,7 +598,7 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
         }
 
-        if(imeDelayTicks > 0) {
+        if(imeDelayTicks != 0) {
             imeDelayTicks--;
             if(imeDelayTicks == 0) {
                 IME = true;

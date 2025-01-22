@@ -30,6 +30,10 @@ public class IORegisters extends AddressSpace {
             case 0xFF07 -> {
                 super.writeUnrestricted(addr, value & 0b111);
             }
+            case 0xFF46 -> {
+                super.writeUnrestricted(addr, value);
+                gb.getDmaController().scheduleStart(value);
+            }
             default -> super.write(addr, value);
         }
     }
