@@ -6,15 +6,15 @@ import at.alexkiefer.voltboy.core.memory.addressspace.*;
 
 public class MemoryBus extends ConnectedInternal {
 
-    private final int[] memory;
     private final StringBuffer serialBuffer;
+
+    private int dataBus;
 
     private AddressSpace[] addressSpaces;
 
     public MemoryBus(VoltBoy gb) {
 
         super(gb);
-        memory = new int[0x10000];
         serialBuffer = new StringBuffer();
 
         addressSpaces = new AddressSpace[] {
@@ -32,6 +32,9 @@ public class MemoryBus extends ConnectedInternal {
     }
 
     public int read(int addr) {
+        if (gb.getDmaController().isActive()) {
+            return dataBus;
+        }
         addr &= 0xFFFF;
         for (AddressSpace addressSpace : addressSpaces) {
             if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
@@ -45,10 +48,14 @@ public class MemoryBus extends ConnectedInternal {
         if (addr == 0xFF01) {
             serialBuffer.append((char) value);
         }
+        if (gb.getDmaController().isActive()) {
+            return;
+        }
         addr &= 0xFFFF;
         for (AddressSpace addressSpace : addressSpaces) {
             if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
                 addressSpace.write(addr, value & 0xFF);
+                dataBus = value;
                 return;
             }
         }
@@ -72,6 +79,7 @@ public class MemoryBus extends ConnectedInternal {
         for (AddressSpace addressSpace : addressSpaces) {
             if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
                 addressSpace.writeUnrestricted(addr, value & 0xFF);
+                dataBus = value;
                 return;
             }
         }
