@@ -5,8 +5,6 @@ import at.alexkiefer.voltboy.util.BitMasks;
 
 public class BackgroundPixelFetcher extends PixelFetcher {
 
-    private final BackgroundPixelFIFO fifo;
-
     private boolean firstFetch;
     private boolean windowMode;
     private int fetcherWindowY;
@@ -14,8 +12,6 @@ public class BackgroundPixelFetcher extends PixelFetcher {
     public BackgroundPixelFetcher(VoltBoy gb) {
 
         super(gb);
-
-        fifo = gb.getPpu().getBackgroundPixelFifo();
 
         reset();
 
@@ -47,7 +43,6 @@ public class BackgroundPixelFetcher extends PixelFetcher {
         fetcherY = 0;
         firstFetch = true;
         windowMode = false;
-        fetcherWindowY = 0;
 
     }
 
@@ -57,7 +52,6 @@ public class BackgroundPixelFetcher extends PixelFetcher {
         fetcherX = 0;
         fetcherY = 0;
         windowMode = true;
-        fetcherWindowY = 0;
 
     }
 
@@ -80,7 +74,7 @@ public class BackgroundPixelFetcher extends PixelFetcher {
 
             int tileMapArea = (memoryBus.readUnrestricted(0xFF40) & BitMasks.SIX) == 0 ? 0x9800 : 0x9C00;
             int y = 32 * (fetcherWindowY / 8);
-            tileId = memoryBus.read(tileMapArea + ((fetcherX + y )& 0x03FF));
+            tileId = memoryBus.read(tileMapArea + ((fetcherX + y ) & 0x03FF));
 
         } else {
 
@@ -90,7 +84,7 @@ public class BackgroundPixelFetcher extends PixelFetcher {
             int scx = memoryBus.readUnrestricted(0xFF43);
             int x = (fetcherX + (scx / 8)) & 0x1F;
             int y = 32 * (((ly + scy) & 0xFF) / 8);
-            tileId = memoryBus.read(tileMapArea + ((x + y) & 0x03FF));
+            tileId = memoryBus.readUnrestricted(tileMapArea + ((x + y) & 0x03FF));
 
         }
 
@@ -127,13 +121,15 @@ public class BackgroundPixelFetcher extends PixelFetcher {
 
         if (firstFetch) {
             firstFetch = false;
-            step = 0;
+            step = 1;
         }
 
     }
 
     @Override
     protected void pushPixels() {
+
+        BackgroundPixelFIFO fifo = gb.getPpu().getBackgroundPixelFifo();
 
         if(fifo.getSize() > 0) {
             step--;

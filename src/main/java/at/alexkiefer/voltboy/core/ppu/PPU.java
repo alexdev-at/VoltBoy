@@ -9,10 +9,9 @@ import at.alexkiefer.voltboy.core.ppu.object.OAMObjectAttributes;
 import at.alexkiefer.voltboy.core.ppu.pixel.*;
 import at.alexkiefer.voltboy.util.BitMasks;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class PPU extends ConnectedInternal implements Tickable {
 
@@ -32,9 +31,7 @@ public class PPU extends ConnectedInternal implements Tickable {
     private int lx;
     private int ly;
 
-    private OAMObject[] oamBuffer;
-    private int oamSize;
-    private int oamCurrentIndex;
+    private List<OAMObject> oamBuffer;
     private int oamAddress;
 
     public PPU(VoltBoy gb) {
@@ -42,19 +39,17 @@ public class PPU extends ConnectedInternal implements Tickable {
         super(gb);
         memoryBus = gb.getMemoryBus();
 
-        backgroundPixelFetcher = new BackgroundPixelFetcher(gb);
-        objectPixelFetcher = new ObjectPixelFetcher(gb);
         backgroundPixelFifo = new BackgroundPixelFIFO(gb);
         objectPixelFifo = new ObjectPixelFIFO(gb);
+        backgroundPixelFetcher = new BackgroundPixelFetcher(gb);
+        objectPixelFetcher = new ObjectPixelFetcher(gb);
 
         mode = PPUMode.MODE_2_OAMSCAN;
 
         lx = 0;
         ly = 0;
 
-        oamBuffer = new OAMObject[10];
-        oamSize = 0;
-        oamCurrentIndex = 0;
+        oamBuffer =  new ArrayList<>();
         oamAddress = 0xFE00;
 
         lcd = new Pixel[144][160];
@@ -107,11 +102,13 @@ public class PPU extends ConnectedInternal implements Tickable {
     private void tickPpu() {
 
         if (dot == 0) {
+            backgroundPixelFifo.clear();
+            backgroundPixelFifo.discardPixels(memoryBus.readUnrestricted(0xFF43) % 8);
             backgroundPixelFetcher.reset();
+            objectPixelFifo.clear();
+            objectPixelFetcher.reset();
             oamAddress = 0xFE00;
-            oamSize = 0;
-            oamCurrentIndex = 0;
-            oamBuffer = new OAMObject[10];
+            oamBuffer.clear();
         }
 
         int stat = memoryBus.readUnrestricted(0xFF41);
@@ -121,9 +118,11 @@ public class PPU extends ConnectedInternal implements Tickable {
 
             if(dot == 80) {
                 mode = PPUMode.MODE_3_RENDERING;
-                oamBuffer = (OAMObject[]) Arrays.stream(oamBuffer).sorted(Comparator.comparingInt(OAMObject::getX)).toArray();
+                oamBuffer.sort(Comparator.comparingInt(OAMObject::getX));
                 Set<Integer> seen = ConcurrentHashMap.newKeySet();
-                oamBuffer = (OAMObject[])  Arrays.stream(oamBuffer).filter( o -> seen.add(o.getX())).toArray();
+                oamBuffer = oamBuffer.stream()
+                        .filter(o -> seen.add(o.getX()))
+                        .collect(Collectors.toList());
             } else if(lx == 160) {
                 lx = 0;
                 mode = PPUMode.MODE_0_HBLANK;
@@ -169,7 +168,6 @@ public class PPU extends ConnectedInternal implements Tickable {
         }
 
         dot++;
-        ly++;
 
         if(ly == memoryBus.readUnrestricted(0xFF45)) {
             memoryBus.writeUnrestricted(0xFF41, stat | BitMasks.TWO);
@@ -181,6 +179,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
             dot = 0;
             lx = 0;
+            ly = (ly + 1) % 154;
 
             if(ly == memoryBus.readUnrestricted(0xFF45) && (stat & BitMasks.SIX) != 0) {
                 memoryBus.writeUnrestricted(0xFF0F, memoryBus.readUnrestricted(0xFF0F) | BitMasks.ONE);
@@ -208,8 +207,8 @@ public class PPU extends ConnectedInternal implements Tickable {
         OAMObjectAttributes objectAttributes = new OAMObjectAttributes(memoryBus.readUnrestricted(oamAddress++));
 
         int size = (memoryBus.readUnrestricted(0xFF40) & BitMasks.TWO) == 0 ? 8 : 16;
-        if((ly + 16) >= objectY && (ly + 16) < (objectY + size) && oamSize < 10) {
-            oamBuffer[oamSize++] = new OAMObject(objectX, objectY, objectTileIndex, objectAttributes);
+        if((ly + 16) >= objectY && (ly + 16) < (objectY + size) && oamBuffer.size() < 10) {
+            oamBuffer.add(new OAMObject(objectX, objectY, objectTileIndex, objectAttributes));
         }
 
     }
@@ -218,9 +217,10 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         int lcdc = memoryBus.readUnrestricted(0xFF40);
 
-        if(oamCurrentIndex < oamSize) {
-            OAMObject obj = oamBuffer[oamCurrentIndex++];
+        if(!oamBuffer.isEmpty()) {
+            OAMObject obj = oamBuffer.getFirst();
             if(obj.getX() <= lx + 8) {
+                oamBuffer.remove(obj);
                 objectPixelFetcher.reset();
                 objectPixelFetcher.setCurrent(obj);
             }

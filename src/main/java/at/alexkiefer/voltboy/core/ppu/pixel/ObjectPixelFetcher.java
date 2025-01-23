@@ -6,14 +6,11 @@ import at.alexkiefer.voltboy.util.BitMasks;
 
 public class ObjectPixelFetcher extends PixelFetcher {
 
-    private final ObjectPixelFIFO fifo;
-
     private OAMObject current;
 
     public ObjectPixelFetcher(VoltBoy gb) {
 
         super(gb);
-        fifo = gb.getPpu().getObjectPixelFifo();
 
         reset();
 
@@ -29,6 +26,10 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
     @Override
     public void tick() {
+
+        if((memoryBus.readUnrestricted(0xFF40) & BitMasks.SEVEN) == 0) {
+            return;
+        }
 
         switch (step) {
             case 1 -> fetchTileId();
@@ -47,6 +48,11 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
     @Override
     public void reset() {
+
+        step = 1;
+        fetcherX = 0;
+        fetcherY = 0;
+        current = null;
 
     }
 
@@ -86,6 +92,8 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
     @Override
     protected void pushPixels() {
+
+        ObjectPixelFIFO fifo = gb.getPpu().getObjectPixelFifo();
 
         int lo = tileData & 0xFF;
         int hi = tileData >> 8;
