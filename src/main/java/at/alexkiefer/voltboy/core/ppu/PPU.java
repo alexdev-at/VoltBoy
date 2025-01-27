@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 
 public class PPU extends ConnectedInternal implements Tickable {
 
-    private final MemoryBus memoryBus;
-
     private final BackgroundPixelFetcher backgroundPixelFetcher;
     private final ObjectPixelFetcher objectPixelFetcher;
     private final BackgroundPixelFIFO backgroundPixelFifo;
@@ -30,6 +28,13 @@ public class PPU extends ConnectedInternal implements Tickable {
 
     private int lx;
     private int ly;
+    private int lyc;
+    private int scy;
+    private int scx;
+    private int wy;
+    private int wx;
+    private int stat;
+    private int lcdc;
 
     private List<OAMObject> oamBuffer;
     private int oamAddress;
@@ -37,7 +42,6 @@ public class PPU extends ConnectedInternal implements Tickable {
     public PPU(VoltBoy gb) {
 
         super(gb);
-        memoryBus = gb.getMemoryBus();
 
         backgroundPixelFifo = new BackgroundPixelFIFO(gb);
         objectPixelFifo = new ObjectPixelFIFO(gb);
@@ -48,6 +52,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         lx = 0;
         ly = 0;
+        stat = 0;
 
         oamBuffer =  new ArrayList<>();
         oamAddress = 0xFE00;
@@ -85,10 +90,82 @@ public class PPU extends ConnectedInternal implements Tickable {
         return objectPixelFetcher;
     }
 
+    public int getLx() {
+        return lx;
+    }
+
+    public void setLx(int lx) {
+        this.lx = lx;
+    }
+
+    public int getLy() {
+        return ly;
+    }
+
+    public void setLy(int ly) {
+        this.ly = ly;
+    }
+
+    public int getLyc() {
+        return lyc;
+    }
+
+    public void setLyc(int lyc) {
+        this.lyc = lyc;
+    }
+
+    public int getScy() {
+        return scy;
+    }
+
+    public void setScy(int scy) {
+        this.scy = scy;
+    }
+
+    public int getScx() {
+        return scx;
+    }
+
+    public void setScx(int scx) {
+        this.scx = scx;
+    }
+
+    public int getWy() {
+        return wy;
+    }
+
+    public void setWy(int wy) {
+        this.wy = wy;
+    }
+
+    public int getWx() {
+        return wx;
+    }
+
+    public void setWx(int wx) {
+        this.wx = wx;
+    }
+
+    public int getStat() {
+        return stat;
+    }
+
+    public void setStat(int stat) {
+        this.stat = stat;
+    }
+
+    public int getLcdc() {
+        return lcdc;
+    }
+
+    public void setLcdc(int lcdc) {
+        this.lcdc = lcdc;
+    }
+
     @Override
     public void tick() {
 
-        if ((memoryBus.readUnrestricted(0xFF40) & BitMasks.SEVEN) == 0) {
+        if ((lcdc & BitMasks.SEVEN) == 0) {
             return;
         }
 
@@ -103,7 +180,7 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         if (dot == 0) {
             backgroundPixelFifo.clear();
-            backgroundPixelFifo.discardPixels(memoryBus.readUnrestricted(0xFF43) % 8);
+            backgroundPixelFifo.discardPixels(scx % 8);
             backgroundPixelFetcher.reset();
             objectPixelFifo.clear();
             objectPixelFetcher.reset();
@@ -111,7 +188,6 @@ public class PPU extends ConnectedInternal implements Tickable {
             oamBuffer.clear();
         }
 
-        int stat = memoryBus.readUnrestricted(0xFF41);
         PPUMode oldMode = mode;
 
         if(ly <= 143) {
@@ -144,23 +220,22 @@ public class PPU extends ConnectedInternal implements Tickable {
         if(mode != oldMode) {
 
             stat = (stat & 0b11111100) | mode.getValue();
-            memoryBus.writeUnrestricted(0xFF41, stat);
 
             switch(mode) {
                 case MODE_0_HBLANK -> {
                     if((stat & BitMasks.THREE) != 0) {
-                        memoryBus.writeUnrestricted(0xFF0F, memoryBus.readUnrestricted(0xFF0F) | BitMasks.ONE);
+                        gb.getMemoryBus().writeUnrestricted(0xFF0F, gb.getMemoryBus().readUnrestricted(0xFF0F) | BitMasks.ONE);
                     }
                 }
                 case MODE_1_VBLANK -> {
-                    memoryBus.writeUnrestricted(0xFF0F, memoryBus.readUnrestricted(0xFF0F) | BitMasks.ZERO);
+                    gb.getMemoryBus().writeUnrestricted(0xFF0F, gb.getMemoryBus().readUnrestricted(0xFF0F) | BitMasks.ZERO);
                     if((stat & BitMasks.FOUR) != 0) {
-                        memoryBus.writeUnrestricted(0xFF0F, memoryBus.readUnrestricted(0xFF0F) | BitMasks.ONE);
+                        gb.getMemoryBus().writeUnrestricted(0xFF0F, gb.getMemoryBus().readUnrestricted(0xFF0F) | BitMasks.ONE);
                     }
                 }
                 case MODE_2_OAMSCAN -> {
                     if((stat & BitMasks.FIVE) != 0) {
-                        memoryBus.writeUnrestricted(0xFF0F, memoryBus.readUnrestricted(0xFF0F) | BitMasks.ONE);
+                        gb.getMemoryBus().writeUnrestricted(0xFF0F, gb.getMemoryBus().readUnrestricted(0xFF0F) | BitMasks.ONE);
                     }
                 }
             }
@@ -169,10 +244,10 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         dot++;
 
-        if(ly == memoryBus.readUnrestricted(0xFF45)) {
-            memoryBus.writeUnrestricted(0xFF41, stat | BitMasks.TWO);
+        if(ly == lyc) {
+            stat |= BitMasks.TWO;
         } else {
-            memoryBus.writeUnrestricted(0xFF41, stat & ~BitMasks.TWO);
+            stat &= ~ BitMasks.TWO;
         }
 
         if(dot == 456) {
@@ -181,11 +256,9 @@ public class PPU extends ConnectedInternal implements Tickable {
             lx = 0;
             ly = (ly + 1) % 154;
 
-            if(ly == memoryBus.readUnrestricted(0xFF45) && (stat & BitMasks.SIX) != 0) {
-                memoryBus.writeUnrestricted(0xFF0F, memoryBus.readUnrestricted(0xFF0F) | BitMasks.ONE);
+            if(ly == lyc && (stat & BitMasks.SIX) != 0) {
+                gb.getMemoryBus().writeUnrestricted(0xFF0F, gb.getMemoryBus().readUnrestricted(0xFF0F) | BitMasks.ONE);
             }
-
-            memoryBus.writeUnrestricted(0xFF44, ly);
 
             if(backgroundPixelFetcher.isWindowMode()) {
                 backgroundPixelFetcher.incFetcherWindowY();
@@ -201,12 +274,12 @@ public class PPU extends ConnectedInternal implements Tickable {
             return;
         }
 
-        int objectY = memoryBus.readUnrestricted(oamAddress++);
-        int objectX = memoryBus.readUnrestricted(oamAddress++);
-        int objectTileIndex = memoryBus.readUnrestricted(oamAddress++);
-        OAMObjectAttributes objectAttributes = new OAMObjectAttributes(memoryBus.readUnrestricted(oamAddress++));
+        int objectY = gb.getMemoryBus().readUnrestricted(oamAddress++);
+        int objectX = gb.getMemoryBus().readUnrestricted(oamAddress++);
+        int objectTileIndex = gb.getMemoryBus().readUnrestricted(oamAddress++);
+        OAMObjectAttributes objectAttributes = new OAMObjectAttributes(gb.getMemoryBus().readUnrestricted(oamAddress++));
 
-        int size = (memoryBus.readUnrestricted(0xFF40) & BitMasks.TWO) == 0 ? 8 : 16;
+        int size = (gb.getMemoryBus().readUnrestricted(0xFF40) & BitMasks.TWO) == 0 ? 8 : 16;
         if((ly + 16) >= objectY && (ly + 16) < (objectY + size) && oamBuffer.size() < 10) {
             oamBuffer.add(new OAMObject(objectX, objectY, objectTileIndex, objectAttributes));
         }
@@ -214,8 +287,6 @@ public class PPU extends ConnectedInternal implements Tickable {
     }
 
     private void render() {
-
-        int lcdc = memoryBus.readUnrestricted(0xFF40);
 
         if(!oamBuffer.isEmpty()) {
             OAMObject obj = oamBuffer.getFirst();
@@ -267,7 +338,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             }
 
             if((lcdc & BitMasks.FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= memoryBus.readUnrestricted(0xFF4A) && lx >= (memoryBus.readUnrestricted(0xFF4B) - 7)) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getMemoryBus().readUnrestricted(0xFF4A) && lx >= (gb.getMemoryBus().readUnrestricted(0xFF4B) - 7)) {
                     backgroundPixelFifo.clear();
                     backgroundPixelFetcher.startWindowMode();
                 }
@@ -281,7 +352,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             }
 
             if((lcdc & BitMasks.FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= memoryBus.readUnrestricted(0xFF4A) && lx >= (memoryBus.readUnrestricted(0xFF4B) - 7)) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getMemoryBus().readUnrestricted(0xFF4A) && lx >= (gb.getMemoryBus().readUnrestricted(0xFF4B) - 7)) {
                     backgroundPixelFifo.clear();
                     backgroundPixelFetcher.startWindowMode();
                 }

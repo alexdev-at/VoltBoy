@@ -4,34 +4,67 @@ import at.alexkiefer.voltboy.core.ConnectedInternal;
 import at.alexkiefer.voltboy.core.Tickable;
 import at.alexkiefer.voltboy.core.VoltBoy;
 import at.alexkiefer.voltboy.util.BitMasks;
+import at.alexkiefer.voltboy.util.HexUtils;
 
 public class Timer extends ConnectedInternal implements Tickable {
 
     private int div;
+    private int tima;
+    private int tma;
+    private int tac;
+
     private int timerSteps;
     private int lastMode;
     private boolean delayedTima;
 
     public Timer(VoltBoy gb) {
         super(gb);
-        div = 0xABCC;
         timerSteps = 0;
         delayedTima = false;
-        gb.getMemoryBus().writeUnrestricted(0xFF04, div);
+    }
+
+    public int getDiv() {
+        return div >> 8;
+    }
+
+    public void setDiv(int div) {
+        this.div = div << 8;
+    }
+
+    public int getTima() {
+        return tima;
+    }
+
+    public void setTima(int tima) {
+        this.tima = tima;
+    }
+
+    public int getTma() {
+        return tma;
+    }
+
+    public void setTma(int tma) {
+        this.tma = tma;
+    }
+
+    public int getTac() {
+        return tac;
+    }
+
+    public void setTac(int tac) {
+        this.tac = tac & 0b0000_0111;
     }
 
     @Override
     public void tick() {
 
-        incDiv();
+        div = (div + 1) & 0xFFFF;
 
         if(delayedTima) {
             delayedTima = false;
-            gb.getMemoryBus().writeUnrestricted(0xFF05, gb.getMemoryBus().read(0xFF06));
+            tima = tma;
             gb.getMemoryBus().write(0xFF0F, gb.getMemoryBus().read(0xFF0F) | BitMasks.TWO);
         }
-
-        int tac = gb.getMemoryBus().read(0xFF07);
 
         if((tac & BitMasks.TWO) != 0) {
 
@@ -77,24 +110,11 @@ public class Timer extends ConnectedInternal implements Tickable {
 
     }
 
-    public void resetDiv() {
-        div = 0;
-    }
-
-    private void incDiv() {
-        int old = div;
-        div = (div + 1) & 0xFFFF;
-        if((div & 0xFF00) != (old & 0xFF00)) {
-            gb.getMemoryBus().writeUnrestricted(0xFF04, div);
-        }
-    }
-
     private void incTima() {
-        int res = gb.getMemoryBus().read(0xFF05) + 1;
-        if(res > 0xFF) {
+        int res = (tima + 1) & 0xFF;
+        if(res == 0x00) {
             delayedTima = true;
         }
-        gb.getMemoryBus().writeUnrestricted(0xFF05, res);
     }
 
 }

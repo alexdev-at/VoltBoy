@@ -21,10 +21,10 @@ public class VoltBoy implements Tickable {
     public VoltBoy(String romPath) throws IOException {
         dmaController = new DMAController(this);
         cartridge = new Cartridge(this, romPath);
-        memoryBus = new MemoryBus(this);
-        timer = new Timer(this);
-        cpu = new CPU(this);
         ppu = new PPU(this);
+        timer = new Timer(this);
+        memoryBus = new MemoryBus(this);
+        cpu = new CPU(this);
     }
 
     public MemoryBus getMemoryBus() {

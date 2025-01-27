@@ -27,7 +27,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
     @Override
     public void tick() {
 
-        if((memoryBus.readUnrestricted(0xFF40) & BitMasks.SEVEN) == 0) {
+        if((gb.getPpu().getLcdc() & BitMasks.SEVEN) == 0) {
             return;
         }
 
@@ -60,7 +60,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
     protected void fetchTileId() {
 
         tileId = current.getTileIndex();
-        int size = (memoryBus.readUnrestricted(0xFF40) & BitMasks.TWO) == 0 ? 8 : 16;
+        int size = (gb.getPpu().getLcdc() & BitMasks.TWO) == 0 ? 8 : 16;
         if (size == 16) {
             tileId &= ~BitMasks.ZERO;
         }
@@ -72,21 +72,21 @@ public class ObjectPixelFetcher extends PixelFetcher {
 
         int tileDataArea = 0x8000;
 
-        int ly = memoryBus.readUnrestricted(0xFF44);
+        int ly = gb.getPpu().getLy();
         int offset = (ly + 16) - current.getY();
         if (current.getAttributes().isYFlip()) {
-            int size = (memoryBus.readUnrestricted(0xFF40) & BitMasks.TWO) == 0 ? 8 : 16;
+            int size = (gb.getPpu().getLcdc() & BitMasks.TWO) == 0 ? 8 : 16;
             offset = (size - 1) - offset;
         }
         tileDataAddress = tileDataArea + (2 * offset) + (tileId * 16);
-        tileData = memoryBus.readUnrestricted(tileDataAddress++);
+        tileData = gb.getMemoryBus().readUnrestricted(tileDataAddress++);
 
     }
 
     @Override
     protected void fetchTileDataHigh() {
 
-        tileData |= memoryBus.readUnrestricted(tileDataAddress) << 8;
+        tileData |= gb.getMemoryBus().readUnrestricted(tileDataAddress) << 8;
 
     }
 
@@ -99,7 +99,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int hi = tileData >> 8;
 
         Pixel[] pixels = new Pixel[8];
-        int palette = memoryBus.readUnrestricted(current.getAttributes().isObjectPaletteZero() ? 0xFF48 : 0xFF49);
+        int palette = gb.getMemoryBus().readUnrestricted(current.getAttributes().isObjectPaletteZero() ? 0xFF48 : 0xFF49);
 
         if(current.getAttributes().isXFlip()) {
             for(int i = 0; i < 8; i++) {
