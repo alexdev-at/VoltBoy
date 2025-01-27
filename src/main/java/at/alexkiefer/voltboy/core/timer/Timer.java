@@ -4,7 +4,6 @@ import at.alexkiefer.voltboy.core.ConnectedInternal;
 import at.alexkiefer.voltboy.core.Tickable;
 import at.alexkiefer.voltboy.core.VoltBoy;
 import at.alexkiefer.voltboy.util.BitMasks;
-import at.alexkiefer.voltboy.util.HexUtils;
 
 public class Timer extends ConnectedInternal implements Tickable {
 
@@ -16,6 +15,7 @@ public class Timer extends ConnectedInternal implements Tickable {
     private int timerSteps;
     private int lastMode;
     private boolean delayedTima;
+    private int lastAndResult;
 
     public Timer(VoltBoy gb) {
         super(gb);
@@ -29,6 +29,10 @@ public class Timer extends ConnectedInternal implements Tickable {
 
     public void setDiv(int div) {
         this.div = div << 8;
+    }
+
+    public void resetDiv() {
+        this.div = 0;
     }
 
     public int getTima() {
@@ -58,61 +62,50 @@ public class Timer extends ConnectedInternal implements Tickable {
     @Override
     public void tick() {
 
+        incDiv();
+        incDiv();
+        incDiv();
+        incDiv();
+
+    }
+
+    private void incDiv() {
+
         div = (div + 1) & 0xFFFF;
 
-        if(delayedTima) {
-            delayedTima = false;
-            tima = tma;
-            gb.getMemoryBus().write(0xFF0F, gb.getMemoryBus().read(0xFF0F) | BitMasks.TWO);
+        int mode = tac & 0b11;
+
+        int bitPos = 0;
+
+        switch (mode) {
+            case 0b00 -> {
+                bitPos = 9;
+            }
+            case 0b01 -> {
+                bitPos = 3;
+            }
+            case 0b10 -> {
+                bitPos = 5;
+            }
+            case 0b11 -> {
+                bitPos = 7;
+            }
         }
 
-        if((tac & BitMasks.TWO) != 0) {
+        int tacBit = (tac & 0b100) >> 2;
+        int andResult = tacBit & ((div & (1 << bitPos)) >> bitPos);
 
-            timerSteps++;
-
-            int mode = tac & 0b11;
-
-            if(mode != lastMode) {
-                timerSteps = 0;
-                lastMode = mode;
-            }
-
-            switch(mode) {
-                case 0b00 -> {
-                    if(timerSteps == 256) {
-                        timerSteps -= 256;
-                        incTima();
-                    }
-                }
-                case 0b01 -> {
-                    if(timerSteps == 4) {
-                        timerSteps -= 4;
-                        incTima();
-                    }
-                }
-                case 0b10 -> {
-                    if(timerSteps == 16) {
-                        timerSteps -= 16;
-                        incTima();
-                    }
-                }
-                case 0b11 -> {
-                    if(timerSteps == 64) {
-                        timerSteps -= 64;
-                        incTima();
-                    }
-                }
-            }
-
-        } else {
-            timerSteps = 0;
+        if (lastAndResult == 1 && andResult == 0) {
+            incTima();
         }
+
+        lastAndResult = andResult;
 
     }
 
     private void incTima() {
-        int res = (tima + 1) & 0xFF;
-        if(res == 0x00) {
+        tima = (tima + 1) & 0xFF;
+        if(tima == 0) {
             delayedTima = true;
         }
     }

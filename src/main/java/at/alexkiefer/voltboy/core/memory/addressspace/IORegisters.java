@@ -64,7 +64,7 @@ public class IORegisters extends AddressSpace {
     public void write(int addr, int value) {
         switch (addr) {
             case 0xFF04 -> {
-                timer.setDiv(0);
+                timer.resetDiv();
             }
             case 0xFF05 -> {
 

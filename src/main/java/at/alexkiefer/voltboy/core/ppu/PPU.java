@@ -50,10 +50,6 @@ public class PPU extends ConnectedInternal implements Tickable {
 
         mode = PPUMode.MODE_2_OAMSCAN;
 
-        lx = 0;
-        ly = 0;
-        stat = 0;
-
         oamBuffer =  new ArrayList<>();
         oamAddress = 0xFE00;
 
@@ -279,7 +275,7 @@ public class PPU extends ConnectedInternal implements Tickable {
         int objectTileIndex = gb.getMemoryBus().readUnrestricted(oamAddress++);
         OAMObjectAttributes objectAttributes = new OAMObjectAttributes(gb.getMemoryBus().readUnrestricted(oamAddress++));
 
-        int size = (gb.getMemoryBus().readUnrestricted(0xFF40) & BitMasks.TWO) == 0 ? 8 : 16;
+        int size = (lcdc & BitMasks.TWO) == 0 ? 8 : 16;
         if((ly + 16) >= objectY && (ly + 16) < (objectY + size) && oamBuffer.size() < 10) {
             oamBuffer.add(new OAMObject(objectX, objectY, objectTileIndex, objectAttributes));
         }
