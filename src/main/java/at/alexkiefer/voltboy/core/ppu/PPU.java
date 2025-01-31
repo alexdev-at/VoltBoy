@@ -3,7 +3,6 @@ package at.alexkiefer.voltboy.core.ppu;
 import at.alexkiefer.voltboy.core.ConnectedInternal;
 import at.alexkiefer.voltboy.core.Tickable;
 import at.alexkiefer.voltboy.core.VoltBoy;
-import at.alexkiefer.voltboy.core.memory.MemoryBus;
 import at.alexkiefer.voltboy.core.ppu.object.OAMObject;
 import at.alexkiefer.voltboy.core.ppu.object.OAMObjectAttributes;
 import at.alexkiefer.voltboy.core.ppu.pixel.*;
@@ -147,7 +146,7 @@ public class PPU extends ConnectedInternal implements Tickable {
     }
 
     public void setStat(int stat) {
-        this.stat = stat;
+        this.stat = stat & 0b0111_1100;
     }
 
     public int getLcdc() {
@@ -243,7 +242,7 @@ public class PPU extends ConnectedInternal implements Tickable {
         if(ly == lyc) {
             stat |= BitMasks.TWO;
         } else {
-            stat &= ~ BitMasks.TWO;
+            stat &= ~BitMasks.TWO;
         }
 
         if(dot == 456) {
@@ -334,7 +333,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             }
 
             if((lcdc & BitMasks.FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getMemoryBus().readUnrestricted(0xFF4A) && lx >= (gb.getMemoryBus().readUnrestricted(0xFF4B) - 7)) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= wy && lx >= (wx - 7)) {
                     backgroundPixelFifo.clear();
                     backgroundPixelFetcher.startWindowMode();
                 }
@@ -348,7 +347,7 @@ public class PPU extends ConnectedInternal implements Tickable {
             }
 
             if((lcdc & BitMasks.FIVE) != 0) {
-                if(!backgroundPixelFetcher.isWindowMode() && ly >= gb.getMemoryBus().readUnrestricted(0xFF4A) && lx >= (gb.getMemoryBus().readUnrestricted(0xFF4B) - 7)) {
+                if(!backgroundPixelFetcher.isWindowMode() && ly >= wy && lx >= (wx - 7)) {
                     backgroundPixelFifo.clear();
                     backgroundPixelFetcher.startWindowMode();
                 }

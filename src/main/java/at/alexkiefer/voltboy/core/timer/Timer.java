@@ -67,6 +67,12 @@ public class Timer extends ConnectedInternal implements Tickable {
         incDiv();
         incDiv();
 
+        if(delayedTima) {
+            delayedTima = false;
+            tima = tma;
+            gb.getMemoryBus().write(0xFF0F, gb.getMemoryBus().read(0xFF0F) | BitMasks.TWO);
+        }
+
     }
 
     private void incDiv() {

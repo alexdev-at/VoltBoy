@@ -11,8 +11,8 @@ import java.io.IOException;
 
 public class VoltBoyWindow {
 
-    private final static int WIDTH = 800;
-    private static final int HEIGHT = 800;
+    private final static int WIDTH = 160 * 5;
+    private static final int HEIGHT = 144 * 5;
 
     private long window;
 

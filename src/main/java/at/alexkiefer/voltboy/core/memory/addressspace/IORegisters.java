@@ -67,7 +67,7 @@ public class IORegisters extends AddressSpace {
                 timer.resetDiv();
             }
             case 0xFF05 -> {
-
+                timer.setTima(value);
             }
             case 0xFF06 -> {
                 timer.setTma(value);
@@ -79,6 +79,7 @@ public class IORegisters extends AddressSpace {
                 ppu.setLcdc(value);
             }
             case 0xFF41 -> {
+                ppu.setStat(value);
             }
             case 0xFF42 -> {
                 ppu.setScy(value);
