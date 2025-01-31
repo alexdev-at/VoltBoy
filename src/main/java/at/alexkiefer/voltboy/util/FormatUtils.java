@@ -1,6 +1,6 @@
 package at.alexkiefer.voltboy.util;
 
-public class HexUtils {
+public class FormatUtils {
 
     public static String toHex(int value) {
         String ret = Integer.toHexString(value).toUpperCase();

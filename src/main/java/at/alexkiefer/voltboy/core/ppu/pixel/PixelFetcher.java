@@ -3,7 +3,6 @@ package at.alexkiefer.voltboy.core.ppu.pixel;
 import at.alexkiefer.voltboy.core.ConnectedInternal;
 import at.alexkiefer.voltboy.core.Tickable;
 import at.alexkiefer.voltboy.core.VoltBoy;
-import at.alexkiefer.voltboy.core.memory.MemoryBus;
 
 public abstract class PixelFetcher extends ConnectedInternal implements Tickable {
 
@@ -16,11 +15,8 @@ public abstract class PixelFetcher extends ConnectedInternal implements Tickable
     protected int tileData;
     protected int tileDataAddress;
 
-    protected MemoryBus memoryBus;
-
     public PixelFetcher(VoltBoy gb) {
         super(gb);
-        memoryBus = gb.getMemoryBus();
     }
 
     public int getStep() {

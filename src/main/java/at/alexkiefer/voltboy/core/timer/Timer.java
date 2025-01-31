@@ -8,93 +8,112 @@ import at.alexkiefer.voltboy.util.BitMasks;
 public class Timer extends ConnectedInternal implements Tickable {
 
     private int div;
+    private int tima;
+    private int tma;
+    private int tac;
+
     private int timerSteps;
     private int lastMode;
     private boolean delayedTima;
+    private int lastAndResult;
 
     public Timer(VoltBoy gb) {
         super(gb);
-        div = 0xABCC;
         timerSteps = 0;
         delayedTima = false;
-        gb.getMemoryBus().writeUnrestricted(0xFF04, div);
+    }
+
+    public int getDiv() {
+        return div >> 8;
+    }
+
+    public void setDiv(int div) {
+        this.div = div << 8;
+    }
+
+    public void resetDiv() {
+        this.div = 0;
+    }
+
+    public int getTima() {
+        return tima;
+    }
+
+    public void setTima(int tima) {
+        this.tima = tima;
+    }
+
+    public int getTma() {
+        return tma;
+    }
+
+    public void setTma(int tma) {
+        this.tma = tma;
+    }
+
+    public int getTac() {
+        return tac;
+    }
+
+    public void setTac(int tac) {
+        this.tac = tac & 0b0000_0111;
     }
 
     @Override
     public void tick() {
 
         incDiv();
+        incDiv();
+        incDiv();
+        incDiv();
 
         if(delayedTima) {
             delayedTima = false;
-            gb.getMemoryBus().writeUnrestricted(0xFF05, gb.getMemoryBus().read(0xFF06));
+            tima = tma;
             gb.getMemoryBus().write(0xFF0F, gb.getMemoryBus().read(0xFF0F) | BitMasks.TWO);
         }
 
-        int tac = gb.getMemoryBus().read(0xFF07);
-
-        if((tac & BitMasks.TWO) != 0) {
-
-            timerSteps++;
-
-            int mode = tac & 0b11;
-
-            if(mode != lastMode) {
-                timerSteps = 0;
-                lastMode = mode;
-            }
-
-            switch(mode) {
-                case 0b00 -> {
-                    if(timerSteps == 256) {
-                        timerSteps -= 256;
-                        incTima();
-                    }
-                }
-                case 0b01 -> {
-                    if(timerSteps == 4) {
-                        timerSteps -= 4;
-                        incTima();
-                    }
-                }
-                case 0b10 -> {
-                    if(timerSteps == 16) {
-                        timerSteps -= 16;
-                        incTima();
-                    }
-                }
-                case 0b11 -> {
-                    if(timerSteps == 64) {
-                        timerSteps -= 64;
-                        incTima();
-                    }
-                }
-            }
-
-        } else {
-            timerSteps = 0;
-        }
-
-    }
-
-    public void resetDiv() {
-        div = 0;
     }
 
     private void incDiv() {
-        int old = div;
+
         div = (div + 1) & 0xFFFF;
-        if((div & 0xFF00) != (old & 0xFF00)) {
-            gb.getMemoryBus().writeUnrestricted(0xFF04, div);
+
+        int mode = tac & 0b11;
+
+        int bitPos = 0;
+
+        switch (mode) {
+            case 0b00 -> {
+                bitPos = 9;
+            }
+            case 0b01 -> {
+                bitPos = 3;
+            }
+            case 0b10 -> {
+                bitPos = 5;
+            }
+            case 0b11 -> {
+                bitPos = 7;
+            }
         }
+
+        int tacBit = (tac & 0b100) >> 2;
+        int andResult = tacBit & ((div & (1 << bitPos)) >> bitPos);
+
+        if (lastAndResult == 1 && andResult == 0) {
+            incTima();
+        }
+
+        lastAndResult = andResult;
+
     }
 
     private void incTima() {
-        int res = gb.getMemoryBus().read(0xFF05) + 1;
-        if(res > 0xFF) {
+        tima = (tima + 1) & 0xFF;
+        if(tima == 0) {
             delayedTima = true;
         }
-        gb.getMemoryBus().writeUnrestricted(0xFF05, res);
     }
 
 }

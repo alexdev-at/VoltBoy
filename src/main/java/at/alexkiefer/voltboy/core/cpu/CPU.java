@@ -589,7 +589,7 @@ public class CPU extends ConnectedInternal implements Tickable {
     @Override
     public void tick() {
 
-        if(halt) {
+        if (halt) {
             int interrupts = memoryBus.read(0xFFFF) & memoryBus.read(0xFF0F);
             if(interrupts != 0) {
                 halt = false;
@@ -598,16 +598,16 @@ public class CPU extends ConnectedInternal implements Tickable {
             }
         }
 
-        if(imeDelayTicks != 0) {
+        if (imeDelayTicks != 0) {
             imeDelayTicks--;
-            if(imeDelayTicks == 0) {
+            if (imeDelayTicks == 0) {
                 IME = true;
             }
         }
 
         if (currentInstructionCycle == 0) {
             handleInterrupts();
-            if(haltBug) {
+            if (haltBug) {
                 haltBug = false;
                 registers.PC.dec();
             }
