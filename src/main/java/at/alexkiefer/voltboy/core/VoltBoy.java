@@ -2,6 +2,7 @@ package at.alexkiefer.voltboy.core;
 
 import at.alexkiefer.voltboy.core.cpu.CPU;
 import at.alexkiefer.voltboy.core.dma.DMAController;
+import at.alexkiefer.voltboy.core.input.InputHandler;
 import at.alexkiefer.voltboy.core.memory.MemoryBus;
 import at.alexkiefer.voltboy.core.memory.cartridge.Cartridge;
 import at.alexkiefer.voltboy.core.ppu.PPU;
@@ -17,12 +18,14 @@ public class VoltBoy implements Tickable {
     private  final DMAController dmaController;
     private final PPU ppu;
     private final CPU cpu;
+    private final InputHandler inputHandler;
 
     public VoltBoy(String romPath) throws IOException {
         dmaController = new DMAController(this);
         cartridge = new Cartridge(this, romPath);
         ppu = new PPU(this);
         timer = new Timer(this);
+        inputHandler = new InputHandler(this);
         memoryBus = new MemoryBus(this);
         cpu = new CPU(this);
     }
@@ -51,10 +54,15 @@ public class VoltBoy implements Tickable {
         return dmaController;
     }
 
+    public InputHandler getInputHandler() {
+        return inputHandler;
+    }
+
     @Override
     public void tick() {
         timer.tick();
         dmaController.tick();
+        inputHandler.tick();
         ppu.tick();
         cpu.tick();
     }
