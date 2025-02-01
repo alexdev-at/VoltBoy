@@ -53,6 +53,26 @@ public class BlarggTests {
 
     @ParameterizedTest
     @ValueSource(strings = {
+            "testroms/blargg/cpu_instrs/cpu_instrs.gb",
+    })
+    public void testSystem_withBlarggInstructionFunctionalityCompleteTestrom_shouldReturnStringBufferWithPassed(String romPath) {
+
+        assertDoesNotThrow(() -> gb = new VoltBoy(resourcePath.resolve(romPath).toString()));
+
+        boolean run = true;
+
+        while (run) {
+            gb.tick();
+            assertFalse(gb.getMemoryBus().getSerialBuffer().toString().endsWith("Failed"));
+            if (gb.getMemoryBus().getSerialBuffer().toString().endsWith("Passed")) {
+                run = false;
+            }
+        }
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
             "testroms/blargg/instr_timing/instr_timing.gb"
     })
     public void testSystem_withBlarggInstructionTimingTestroms_shouldReturnStringBufferWithPassed(String romPath) {
