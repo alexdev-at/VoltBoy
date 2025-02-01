@@ -11,17 +11,28 @@ public class Cartridge extends ConnectedInternal {
 
     private final int[] rom;
 
+    private final CartridgeHeaderData headerData;
+
     public Cartridge(VoltBoy gb, String romPath) throws IOException {
+
         super(gb);
+
         byte[] romBytes = Files.readAllBytes(Path.of(romPath));
         rom = new int[romBytes.length];
         for (int i = 0; i < romBytes.length; i++) {
             rom[i] = Byte.toUnsignedInt(romBytes[i]);
         }
+
+        headerData = new CartridgeHeaderData(rom);
+
     }
 
     public int[] getRom() {
         return rom;
+    }
+
+    public CartridgeHeaderData getHeaderData() {
+        return headerData;
     }
 
     public int read(int addr) {
