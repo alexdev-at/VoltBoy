@@ -100,7 +100,7 @@ public class BackgroundPixelFetcher extends PixelFetcher {
 
             int offset = 2 * (fetcherWindowY % 8);
             tileDataAddress = tileDataArea + offset + ((signed ? (byte) tileId : tileId) * 16);
-            tileData = gb.getMemoryBus().readUnrestricted(tileDataAddress++);
+            tileData = gb.getMemoryBus().readUnrestricted(tileDataAddress);
 
         } else {
 
@@ -108,7 +108,7 @@ public class BackgroundPixelFetcher extends PixelFetcher {
             int scy = gb.getPpu().getScy();
             int offset = 2 * ((ly + scy) % 8);
             tileDataAddress = tileDataArea + offset + ((signed ? (byte) tileId : tileId) * 16);
-            tileData = gb.getMemoryBus().readUnrestricted(tileDataAddress++);
+            tileData = gb.getMemoryBus().readUnrestricted(tileDataAddress);
 
         }
 
@@ -117,7 +117,24 @@ public class BackgroundPixelFetcher extends PixelFetcher {
     @Override
     protected void fetchTileDataHigh() {
 
-        tileData |= gb.getMemoryBus().readUnrestricted(tileDataAddress) << 8;
+        int tileDataArea = (gb.getPpu().getLcdc() & BitMasks.FOUR) == 0 ? 0x9000 : 0x8000;
+        boolean signed = tileDataArea == 0x9000;
+
+        if (windowMode) {
+
+            int offset = 2 * (fetcherWindowY % 8);
+            tileDataAddress = tileDataArea + offset + ((signed ? (byte) tileId : tileId) * 16) + 1;
+            tileData |= gb.getMemoryBus().readUnrestricted(tileDataAddress) << 8;
+
+        } else {
+
+            int ly = gb.getPpu().getLy();
+            int scy = gb.getPpu().getScy();
+            int offset = 2 * ((ly + scy) % 8);
+            tileDataAddress = tileDataArea + offset + ((signed ? (byte) tileId : tileId) * 16) + 1;
+            tileData |= gb.getMemoryBus().readUnrestricted(tileDataAddress) << 8;
+
+        }
 
         if (firstFetch) {
             firstFetch = false;

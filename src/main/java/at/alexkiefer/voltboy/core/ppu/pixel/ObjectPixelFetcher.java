@@ -79,13 +79,22 @@ public class ObjectPixelFetcher extends PixelFetcher {
             offset = (size - 1) - offset;
         }
         tileDataAddress = tileDataArea + (2 * offset) + (tileId * 16);
-        tileData = gb.getMemoryBus().readUnrestricted(tileDataAddress++);
+        tileData = gb.getMemoryBus().readUnrestricted(tileDataAddress);
 
     }
 
     @Override
     protected void fetchTileDataHigh() {
 
+        int tileDataArea = 0x8000;
+
+        int ly = gb.getPpu().getLy();
+        int offset = (ly + 16) - current.getY();
+        if (current.getAttributes().isYFlip()) {
+            int size = (gb.getPpu().getLcdc() & BitMasks.TWO) == 0 ? 8 : 16;
+            offset = (size - 1) - offset;
+        }
+        tileDataAddress = tileDataArea + (2 * offset) + (tileId * 16) + 1;
         tileData |= gb.getMemoryBus().readUnrestricted(tileDataAddress) << 8;
 
     }
