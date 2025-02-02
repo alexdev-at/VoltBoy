@@ -36,7 +36,7 @@ public class Cartridge extends ConnectedInternal {
             case 0x00 -> {
                 mbc = new NoMBC(gb, headerData);
             }
-            case 0x01 -> {
+            case 0x01, 0x02, 0x03 -> {
                 mbc = new MBC1(gb, headerData);
             }
             default -> throw new IllegalArgumentException("Invalid or unimplemented MBC: 0x" + FormatUtils.toHex(headerData.getCartridgeType()));

@@ -22,7 +22,6 @@ public class VoltBoyWindow {
     private final int cyclesPerSecond = 1_048_576;
     private final int FPS = 60;
     private final int cyclesPerFrame = cyclesPerSecond / FPS;
-    private final double NS_PER_FRAME = 1_000_000_000.0 / FPS;
 
     private long variableYieldTime, lastTime;
 
@@ -49,6 +48,34 @@ public class VoltBoyWindow {
         GLFW.glfwSwapInterval(1);
         GLFW.glfwShowWindow(window);
 
+        GLFW.glfwSetKeyCallback(window, this::keyCallback);
+
+    }
+
+    private void keyCallback(long window, int key, int scancode, int action, int mods) {
+        if (action == GLFW.GLFW_PRESS) {
+            switch (key) {
+                case GLFW.GLFW_KEY_W -> gb.getInputHandler().pressJoypadUp();
+                case GLFW.GLFW_KEY_S -> gb.getInputHandler().pressJoypadDown();
+                case GLFW.GLFW_KEY_A -> gb.getInputHandler().pressJoypadLeft();
+                case GLFW.GLFW_KEY_D -> gb.getInputHandler().pressJoypadRight();
+                case GLFW.GLFW_KEY_ENTER -> gb.getInputHandler().pressStart();
+                case GLFW.GLFW_KEY_ESCAPE -> gb.getInputHandler().pressSelect();
+                case GLFW.GLFW_KEY_H -> gb.getInputHandler().pressA();
+                case GLFW.GLFW_KEY_J -> gb.getInputHandler().pressB();
+            }
+        } else if (action == GLFW.GLFW_RELEASE) {
+            switch (key) {
+                case GLFW.GLFW_KEY_W -> gb.getInputHandler().releaseJoypadUp();
+                case GLFW.GLFW_KEY_S -> gb.getInputHandler().releaseJoypadDown();
+                case GLFW.GLFW_KEY_A -> gb.getInputHandler().releaseJoypadLeft();
+                case GLFW.GLFW_KEY_D -> gb.getInputHandler().releaseJoypadRight();
+                case GLFW.GLFW_KEY_ENTER -> gb.getInputHandler().releaseStart();
+                case GLFW.GLFW_KEY_ESCAPE -> gb.getInputHandler().releaseSelect();
+                case GLFW.GLFW_KEY_H -> gb.getInputHandler().releaseA();
+                case GLFW.GLFW_KEY_J -> gb.getInputHandler().releaseB();
+            }
+        }
     }
 
     private void loop() {

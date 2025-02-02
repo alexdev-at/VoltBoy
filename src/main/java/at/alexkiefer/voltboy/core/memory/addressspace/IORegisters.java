@@ -1,6 +1,7 @@
 package at.alexkiefer.voltboy.core.memory.addressspace;
 
 import at.alexkiefer.voltboy.core.VoltBoy;
+import at.alexkiefer.voltboy.core.input.InputHandler;
 import at.alexkiefer.voltboy.core.ppu.PPU;
 import at.alexkiefer.voltboy.core.timer.Timer;
 
@@ -8,16 +9,21 @@ public class IORegisters extends AddressSpace {
 
     private final PPU ppu;
     private final Timer timer;
+    private final InputHandler inputHandler;
 
     public IORegisters(VoltBoy gb) {
         super(gb, 0xFF00, 0xFF7F);
         this.ppu = gb.getPpu();
         this.timer = gb.getTimer();
+        this.inputHandler = gb.getInputHandler();
     }
 
     @Override
     public int read(int addr) {
         switch (addr) {
+            case 0xFF00 -> {
+                return inputHandler.getJoypad();
+            }
             case 0xFF04 -> {
                 return timer.getDiv();
             }
@@ -63,6 +69,9 @@ public class IORegisters extends AddressSpace {
     @Override
     public void write(int addr, int value) {
         switch (addr) {
+            case 0xFF00 -> {
+                inputHandler.selectJoypad(value);
+            }
             case 0xFF04 -> {
                 timer.resetDiv();
             }
@@ -109,6 +118,9 @@ public class IORegisters extends AddressSpace {
     @Override
     public int readUnrestricted(int addr) {
         switch (addr) {
+            case 0xFF00 -> {
+                return inputHandler.getJoypad();
+            }
             case 0xFF04 -> {
                 return timer.getDiv();
             }
@@ -154,6 +166,9 @@ public class IORegisters extends AddressSpace {
     @Override
     public void writeUnrestricted(int addr, int value) {
         switch (addr) {
+            case 0xFF00 -> {
+                inputHandler.setJoypad(value);
+            }
             case 0xFF04 -> {
                 timer.setDiv(value);
             }
