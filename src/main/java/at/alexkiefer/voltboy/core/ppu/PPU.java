@@ -35,6 +35,10 @@ public class PPU extends ConnectedInternal implements Tickable {
     private int stat;
     private int lcdc;
 
+    private int bgp;
+    private int obp0;
+    private int obp1;
+
     private List<OAMObject> oamBuffer;
     private int oamAddress;
 
@@ -155,6 +159,30 @@ public class PPU extends ConnectedInternal implements Tickable {
 
     public void setLcdc(int lcdc) {
         this.lcdc = lcdc;
+    }
+
+    public int getBgp() {
+        return bgp;
+    }
+
+    public void setBgp(int bgp) {
+        this.bgp = bgp;
+    }
+
+    public int getObp0() {
+        return obp0;
+    }
+
+    public void setObp0(int obp0) {
+        this.obp0 = obp0;
+    }
+
+    public int getObp1() {
+        return obp1;
+    }
+
+    public void setObp1(int obp1) {
+        this.obp1 = obp1;
     }
 
     @Override

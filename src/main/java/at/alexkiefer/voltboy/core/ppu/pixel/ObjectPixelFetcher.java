@@ -99,7 +99,7 @@ public class ObjectPixelFetcher extends PixelFetcher {
         int hi = tileData >> 8;
 
         Pixel[] pixels = new Pixel[8];
-        int palette = gb.getMemoryBus().readUnrestricted(current.getAttributes().isObjectPaletteZero() ? 0xFF48 : 0xFF49);
+        int palette = current.getAttributes().isObjectPaletteZero() ? gb.getPpu().getObp0() : gb.getPpu().getObp1();
 
         if(current.getAttributes().isXFlip()) {
             for(int i = 0; i < 8; i++) {

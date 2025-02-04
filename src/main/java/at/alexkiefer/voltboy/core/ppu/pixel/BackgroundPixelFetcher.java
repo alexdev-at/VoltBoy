@@ -140,7 +140,7 @@ public class BackgroundPixelFetcher extends PixelFetcher {
         int hi = tileData >> 8;
 
         Pixel[] pixels = new Pixel[8];
-        int palette = gb.getMemoryBus().readUnrestricted(0xFF47);
+        int palette = gb.getPpu().getBgp();
 
         for(int i = 0; i < 8; i++) {
             int loBit = (lo & (1 << (7 - i))) >> (7 - i);

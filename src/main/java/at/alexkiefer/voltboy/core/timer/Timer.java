@@ -32,7 +32,15 @@ public class Timer extends ConnectedInternal implements Tickable {
     }
 
     public void resetDiv() {
+
+        int oldDiv = div;
+
         this.div = 0;
+
+        if ((oldDiv & 0b0001_0000_0000_0000) != 0) {
+            gb.getApu().tick();
+        }
+
     }
 
     public int getTima() {
@@ -63,9 +71,6 @@ public class Timer extends ConnectedInternal implements Tickable {
     public void tick() {
 
         incDiv();
-        incDiv();
-        incDiv();
-        incDiv();
 
         if(delayedTima) {
             delayedTima = false;
@@ -77,7 +82,9 @@ public class Timer extends ConnectedInternal implements Tickable {
 
     private void incDiv() {
 
-        div = (div + 1) & 0xFFFF;
+        int oldDiv = div;
+
+        div = (div + 4) & 0xFFFF;
 
         int mode = tac & 0b11;
 
@@ -106,6 +113,10 @@ public class Timer extends ConnectedInternal implements Tickable {
         }
 
         lastAndResult = andResult;
+
+        if ((oldDiv & 0b0001_0000_0000_0000) != 0 && (div & 0b0001_0000_0000_0000) == 0) {
+            gb.getApu().tick();
+        }
 
     }
 

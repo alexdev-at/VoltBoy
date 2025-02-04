@@ -1,5 +1,6 @@
 package at.alexkiefer.voltboy.core;
 
+import at.alexkiefer.voltboy.core.apu.APU;
 import at.alexkiefer.voltboy.core.cpu.CPU;
 import at.alexkiefer.voltboy.core.dma.DMAController;
 import at.alexkiefer.voltboy.core.input.InputHandler;
@@ -17,6 +18,7 @@ public class VoltBoy implements Tickable {
     private final Timer timer;
     private  final DMAController dmaController;
     private final PPU ppu;
+    private final APU apu;
     private final CPU cpu;
     private final InputHandler inputHandler;
 
@@ -24,6 +26,7 @@ public class VoltBoy implements Tickable {
         dmaController = new DMAController(this);
         cartridge = new Cartridge(this, romPath);
         ppu = new PPU(this);
+        apu = new APU(this);
         timer = new Timer(this);
         inputHandler = new InputHandler(this);
         memoryBus = new MemoryBus(this);
@@ -36,6 +39,10 @@ public class VoltBoy implements Tickable {
 
     public PPU getPpu() {
         return ppu;
+    }
+
+    public APU getApu() {
+        return apu;
     }
 
     public CPU getCpu() {
