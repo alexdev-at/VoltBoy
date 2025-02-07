@@ -3,6 +3,7 @@ package at.alexkiefer.voltboy.core.memory.addressspace;
 import at.alexkiefer.voltboy.core.VoltBoy;
 import at.alexkiefer.voltboy.core.apu.APU;
 import at.alexkiefer.voltboy.core.apu.channel.CH3;
+import at.alexkiefer.voltboy.core.dma.DMAController;
 import at.alexkiefer.voltboy.core.input.InputHandler;
 import at.alexkiefer.voltboy.core.ppu.PPU;
 import at.alexkiefer.voltboy.core.timer.Timer;
@@ -13,6 +14,7 @@ public class IORegisters extends AddressSpace {
     private final PPU ppu;
     private final Timer timer;
     private final InputHandler inputHandler;
+    private final DMAController dmaController;
 
     public IORegisters(VoltBoy gb) {
         super(gb, 0xFF00, 0xFF7F);
@@ -20,6 +22,7 @@ public class IORegisters extends AddressSpace {
         this.ppu = gb.getPpu();
         this.timer = gb.getTimer();
         this.inputHandler = gb.getInputHandler();
+        this.dmaController = gb.getDmaController();
     }
 
     @Override
@@ -41,7 +44,7 @@ public class IORegisters extends AddressSpace {
                 return timer.getTac();
             }
             case 0xFF0F -> {
-                return super.read(addr);
+                return super.read(addr) | 0b1110_0000;
             }
             case 0xFF10 -> {
                 return apu.getSoundChannels()[0].getNRX0();
@@ -127,6 +130,9 @@ public class IORegisters extends AddressSpace {
             case 0xFF45 -> {
                 return ppu.getLyc();
             }
+            case 0xFF46 -> {
+                return dmaController.getSourceAddressStart();
+            }
             case 0xFF47 -> {
                 return ppu.getBgp();
             }
@@ -167,7 +173,7 @@ public class IORegisters extends AddressSpace {
                 timer.setTac(value);
             }
             case 0xFF0F -> {
-                super.write(addr, value);
+                super.write(addr, value | 0b1110_0000);
             }
             case 0xFF10 -> {
                 apu.getSoundChannels()[0].configureNRX0(value);
@@ -252,6 +258,9 @@ public class IORegisters extends AddressSpace {
             case 0xFF45 -> {
                 ppu.setLyc(value);
             }
+            case 0xFF46 -> {
+                gb.getDmaController().scheduleStart(value);
+            }
             case 0xFF47 -> {
                 ppu.setBgp(value);
             }
@@ -266,10 +275,6 @@ public class IORegisters extends AddressSpace {
             }
             case 0xFF4B -> {
                 ppu.setWx(value);
-            }
-            case 0xFF46 -> {
-                super.writeUnrestricted(addr, value);
-                gb.getDmaController().scheduleStart(value);
             }
             default -> {
 
@@ -296,7 +301,7 @@ public class IORegisters extends AddressSpace {
                 return timer.getTac();
             }
             case 0xFF0F -> {
-                return super.readUnrestricted(addr);
+                return super.readUnrestricted(addr) | 0b1110_0000;
             }
             case 0xFF10 -> {
                 return apu.getSoundChannels()[0].getNRX0();
@@ -382,6 +387,9 @@ public class IORegisters extends AddressSpace {
             case 0xFF45 -> {
                 return ppu.getLyc();
             }
+            case 0xFF46 -> {
+                return dmaController.getSourceAddressStart();
+            }
             case 0xFF47 -> {
                 return ppu.getBgp();
             }
@@ -422,7 +430,7 @@ public class IORegisters extends AddressSpace {
                 timer.setTac(value);
             }
             case 0xFF0F -> {
-                super.writeUnrestricted(addr, value);
+                super.writeUnrestricted(addr, value | 0b1110_0000);
             }
             case 0xFF10 -> {
                 apu.getSoundChannels()[0].setNRX0(value);
@@ -507,6 +515,9 @@ public class IORegisters extends AddressSpace {
             }
             case 0xFF45 -> {
                 ppu.setLyc(value);
+            }
+            case 0xFF46 -> {
+                gb.getDmaController().scheduleStart(value);
             }
             case 0xFF47 -> {
                 ppu.setBgp(value);
