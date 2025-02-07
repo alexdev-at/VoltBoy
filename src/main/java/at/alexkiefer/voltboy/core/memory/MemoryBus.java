@@ -89,10 +89,10 @@ public class MemoryBus extends ConnectedInternal {
     }
 
     public int read(int addr) {
-        if (gb.getDmaController().isActive() && (addr < 0xFF80 || addr > 0xFFFE)) {
+        addr &= 0xFFFF;
+        if (gb.getDmaController().isActive() && (addr >= 0xFE00 && addr <= 0xFE9F)) {
             return 0xFF;
         }
-        addr &= 0xFFFF;
         for (AddressSpace addressSpace : addressSpaces) {
             if (addr >= addressSpace.getStart() && addr <= addressSpace.getEnd()) {
                 return addressSpace.read(addr);
@@ -105,19 +105,7 @@ public class MemoryBus extends ConnectedInternal {
         if (addr == 0xFF01) {
             serialBuffer.append((char) value);
         }
-//        if (addr >= 0xA000 && addr <= 0xA100) {
-//            System.out.println("========");
-//            for (int i = 0xA000; i <= 0xA100; i++) {
-//                int valueRead = read(i);
-//                System.out.print((char) valueRead);
-//            }
-//            for (int i = 0xFF10; i <= 0xFF50; i++) {
-//                int valueRead = read(i);
-//                System.out.println("Address: " + FormatUtils.toHex(i) + " Value: " + FormatUtils.toHex(valueRead));
-//            }
-//            System.out.println("========");
-//        }
-        if (gb.getDmaController().isActive() && (addr < 0xFF80 || addr > 0xFFFE)) {
+        if (gb.getDmaController().isActive() && (addr >= 0xFE00 && addr <= 0xFE9F)) {
             return;
         }
         addr &= 0xFFFF;

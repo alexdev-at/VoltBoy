@@ -2363,6 +2363,7 @@ public class CPU extends ConnectedInternal implements Tickable {
         return new InstructionCycle[] {
                 () -> {
                     IME = false;
+                    imeDelayTicks = 0;
                     fetch();
                 }
         };

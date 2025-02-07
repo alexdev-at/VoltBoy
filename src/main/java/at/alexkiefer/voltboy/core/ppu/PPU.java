@@ -146,7 +146,7 @@ public class PPU extends ConnectedInternal implements Tickable {
     }
 
     public int getStat() {
-        return stat;
+        return stat | 0b1000_0000;
     }
 
     public void setStat(int stat) {

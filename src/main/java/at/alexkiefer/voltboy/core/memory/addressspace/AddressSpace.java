@@ -5,11 +5,11 @@ import at.alexkiefer.voltboy.core.VoltBoy;
 
 public abstract class AddressSpace extends ConnectedInternal {
 
-    private final int[] memory;
+    protected final int[] memory;
 
-    private final int start;
-    private final int end;
-    private final int size;
+    protected final int start;
+    protected final int end;
+    protected final int size;
 
     public AddressSpace(VoltBoy gb, int start, int end) {
         super(gb);

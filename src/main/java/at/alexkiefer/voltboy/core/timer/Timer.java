@@ -12,15 +12,14 @@ public class Timer extends ConnectedInternal implements Tickable {
     private int tma;
     private int tac;
 
-    private int timerSteps;
-    private int lastMode;
     private boolean delayedTima;
+    private boolean tmaReloadJustHappened;
     private int lastAndResult;
 
     public Timer(VoltBoy gb) {
         super(gb);
-        timerSteps = 0;
         delayedTima = false;
+        tmaReloadJustHappened = false;
     }
 
     public int getDiv() {
@@ -60,11 +59,11 @@ public class Timer extends ConnectedInternal implements Tickable {
     }
 
     public int getTac() {
-        return tac;
+        return tac | 0b1111_1000;
     }
 
     public void setTac(int tac) {
-        this.tac = tac & 0b0000_0111;
+        this.tac = (tac & 0b0000_0111) | 0b1111_1000;
     }
 
     @Override
@@ -75,6 +74,7 @@ public class Timer extends ConnectedInternal implements Tickable {
         if(delayedTima) {
             delayedTima = false;
             tima = tma;
+            tmaReloadJustHappened = true;
             gb.getMemoryBus().write(0xFF0F, gb.getMemoryBus().read(0xFF0F) | BitMasks.TWO);
         }
 
