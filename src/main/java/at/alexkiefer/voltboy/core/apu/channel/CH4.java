@@ -34,13 +34,13 @@ public class CH4 extends SoundChannel {
     @Override
     public void configureNRX1(int NRX1) {
 
-        if ((gb.getApu().getNR52() & BitMasks.SEVEN) == 0) {
-            return;
-        }
-
         NRX1 |= 0b1100_0000;
 
         super.configureNRX1(NRX1);
+
+        if ((gb.getApu().getNR52() & BitMasks.SEVEN) == 0) {
+            return;
+        }
 
         this.NRX1 = NRX1;
     }
@@ -101,6 +101,11 @@ public class CH4 extends SoundChannel {
     public void reset() {
 
         super.reset();
+
+    }
+
+    @Override
+    public void tick() {
 
     }
 

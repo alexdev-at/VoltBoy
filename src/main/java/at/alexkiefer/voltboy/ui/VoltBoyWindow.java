@@ -25,6 +25,9 @@ public class VoltBoyWindow {
 
     private long variableYieldTime, lastTime;
 
+    private long lastFpsTime;
+    private int fpsCounter;
+
     private void init() {
 
         GLFWErrorCallback.createPrint(System.err).set();
@@ -45,11 +48,12 @@ public class VoltBoyWindow {
         GLFW.glfwSetWindowPos(window, (GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor()).width() - WIDTH) / 2, (GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor()).height() - HEIGHT) / 2);
 
         GLFW.glfwMakeContextCurrent(window);
-        GLFW.glfwSwapInterval(1);
+        GLFW.glfwSwapInterval(0);
         GLFW.glfwShowWindow(window);
 
         GLFW.glfwSetKeyCallback(window, this::keyCallback);
 
+        lastFpsTime = System.nanoTime();
     }
 
     private void keyCallback(long window, int key, int scancode, int action, int mods) {
@@ -116,21 +120,22 @@ public class VoltBoyWindow {
             GLFW.glfwSwapBuffers(window);
             GLFW.glfwPollEvents();
 
+            fpsCounter++;
+            long currentTime = System.nanoTime();
+            if (currentTime - lastFpsTime >= 1_000_000_000) {
+                //System.out.println("FPS: " + fpsCounter);
+                fpsCounter = 0;
+                lastFpsTime = currentTime;
+            }
+
             sync(FPS);
         }
     }
 
-    /**
-     * An accurate sync method that adapts automatically
-     * to the system it runs on to provide reliable results.
-     *
-     * @param fps The desired frame rate, in frames per second
-     */
     private void sync(int fps) {
         if (fps <= 0) return;
 
         long sleepTime = 1000000000 / fps; // nanoseconds to sleep this frame
-        // yieldTime + remainder micro & nano seconds if smaller than sleepTime
         long yieldTime = Math.min(sleepTime, variableYieldTime + sleepTime % (1000 * 1000));
         long overSleep = 0; // time the sync goes over by
 
@@ -141,11 +146,10 @@ public class VoltBoyWindow {
                 if (t < sleepTime - yieldTime) {
                     Thread.sleep(1);
                 } else if (t < sleepTime) {
-                    // burn the last few CPU cycles to ensure accuracy
                     Thread.yield();
                 } else {
                     overSleep = t - sleepTime;
-                    break; // exit while loop
+                    break;
                 }
             }
         } catch (InterruptedException e) {
@@ -153,12 +157,9 @@ public class VoltBoyWindow {
         } finally {
             lastTime = System.nanoTime() - Math.min(overSleep, sleepTime);
 
-            // auto tune the time sync should yield
             if (overSleep > variableYieldTime) {
-                // increase by 200 microseconds (1/5 a ms)
                 variableYieldTime = Math.min(variableYieldTime + 200 * 1000, sleepTime);
             } else if (overSleep < variableYieldTime - 200 * 1000) {
-                // decrease by 2 microseconds
                 variableYieldTime = Math.max(variableYieldTime - 2 * 1000, 0);
             }
         }

@@ -1,12 +1,11 @@
 package at.alexkiefer.voltboy.core.apu.channel;
 
 import at.alexkiefer.voltboy.core.ConnectedInternal;
+import at.alexkiefer.voltboy.core.Tickable;
 import at.alexkiefer.voltboy.core.VoltBoy;
-import at.alexkiefer.voltboy.core.apu.APU;
 import at.alexkiefer.voltboy.util.BitMasks;
-import at.alexkiefer.voltboy.util.FormatUtils;
 
-public abstract class SoundChannel extends ConnectedInternal {
+public abstract class SoundChannel extends ConnectedInternal implements Tickable {
 
     protected boolean enabled;
     protected boolean dacEnabled;
@@ -114,6 +113,10 @@ public abstract class SoundChannel extends ConnectedInternal {
 
     public void configureNRX4(int NRX4) {
 
+        if ((gb.getApu().getNR52() & BitMasks.SEVEN) == 0) {
+            return;
+        }
+
         if (lengthTimer != 0 && ((this.NRX4 & BitMasks.SIX) == 0) && ((NRX4 & BitMasks.SIX) != 0) && gb.getApu().getStep() % 2 != 0) {
 
             lengthTimer--;
@@ -149,16 +152,17 @@ public abstract class SoundChannel extends ConnectedInternal {
 
     public void reset() {
 
-        setNRX0(0);
-        if (!(this instanceof CH3)) {
-            setNRX1(NRX1 &= 0b0011_1111);
+        NRX0 = 0;
+        if (this instanceof CH3) {
+            NRX1 &= 0b1111_1111;
+        } else {
+            NRX1 &= 0b0011_1111;
         }
-        setNRX2(0);
-        setNRX3(0);
-        setNRX4(0);
+        NRX2 = 0;
+        NRX3 = 0;
+        NRX4 = 0;
         enabled = false;
         dacEnabled = false;
-        lengthTimer = 0;
 
     }
 

@@ -77,7 +77,7 @@ public class APU extends ConnectedInternal implements Tickable {
 
         this.NR52 = (NR52 & 0b1000_0000);
 
-        if ((this.NR52 & BitMasks.SEVEN) == 0) {
+        if ((NR52 & BitMasks.SEVEN) == 0) {
             for (SoundChannel ch : soundChannels) {
                 ch.reset();
             }
@@ -91,32 +91,36 @@ public class APU extends ConnectedInternal implements Tickable {
     @Override
     public void tick() {
 
+
+
+    }
+
+    public void frameSequencerTick() {
+
         if ((NR52 & BitMasks.SEVEN) == 0) {
             return;
         }
 
-        if (step % 2 == 0) {
-
-            soundChannels[0].tickLength();
-            soundChannels[1].tickLength();
-            soundChannels[2].tickLength();
-            soundChannels[3].tickLength();
-
-        }
-
-        if (step % 4 == 0) {
-
-            ((CH1) soundChannels[0]).tickFrequencySweep();
-
-        }
-
-        if (step % 8 == 0) {
-
-            soundChannels[0].tickEnvelopeSweep();
-            soundChannels[1].tickEnvelopeSweep();
-            // soundChannels[2].tickEnvelopeSweep();
-            soundChannels[3].tickEnvelopeSweep();
-
+        switch (step) {
+            case 0, 4 -> {
+                soundChannels[0].tickLength();
+                soundChannels[1].tickLength();
+                soundChannels[2].tickLength();
+                soundChannels[3].tickLength();
+            }
+            case 2, 6 -> {
+                soundChannels[0].tickLength();
+                soundChannels[1].tickLength();
+                soundChannels[2].tickLength();
+                soundChannels[3].tickLength();
+                ((CH1) soundChannels[0]).tickFrequencySweep();
+            }
+            case 7 -> {
+                soundChannels[0].tickEnvelopeSweep();
+                soundChannels[1].tickEnvelopeSweep();
+                // soundChannels[2].tickEnvelopeSweep();
+                soundChannels[3].tickEnvelopeSweep();
+            }
         }
 
         step = (step + 1) % 8;

@@ -115,7 +115,7 @@ public class Timer extends ConnectedInternal implements Tickable {
         lastAndResult = andResult;
 
         if ((oldDiv & 0b0001_0000_0000_0000) != 0 && (div & 0b0001_0000_0000_0000) == 0) {
-            gb.getApu().tick();
+            gb.getApu().frameSequencerTick();
         }
 
     }

@@ -68,13 +68,13 @@ public class CH3 extends SoundChannel {
     @Override
     public void configureNRX1(int NRX1) {
 
-        if ((gb.getApu().getNR52() & BitMasks.SEVEN) == 0) {
-            return;
-        }
-
         lengthTimer = lengthTimerLimit - NRX1;
         if (lengthTimer == 0) {
             lengthTimer = lengthTimerLimit;
+        }
+
+        if ((gb.getApu().getNR52() & BitMasks.SEVEN) == 0) {
+            return;
         }
 
         this.NRX1 = NRX1;
@@ -138,6 +138,11 @@ public class CH3 extends SoundChannel {
         super.reset();
 
         waveRamIndex = 0;
+
+    }
+
+    @Override
+    public void tick() {
 
     }
 

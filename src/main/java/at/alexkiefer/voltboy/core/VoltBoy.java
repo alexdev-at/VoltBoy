@@ -70,6 +70,7 @@ public class VoltBoy implements Tickable {
         timer.tick();
         dmaController.tick();
         inputHandler.tick();
+        apu.tick();
         ppu.tick();
         cpu.tick();
     }
